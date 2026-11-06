@@ -1,0 +1,10 @@
+.git
+.github
+.agents
+.ai
+node_modules
+vendor
+public/build
+public/hot
+storage/*.key
+.phpunit.result.cache

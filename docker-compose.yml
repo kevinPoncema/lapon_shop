@@ -1,0 +1,86 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        WWWUSER: '${WWWUSER:-1000}'
+        WWWGROUP: '${WWWGROUP:-1000}'
+    image: shop-app:latest
+    container_name: shop-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+      - "${VITE_PORT:-5174}:${VITE_PORT:-5174}"
+    environment:
+      WWWUSER: '${WWWUSER:-1000}'
+      WWWGROUP: '${WWWGROUP:-1000}'
+      SERVER_HOST: '0.0.0.0'
+      VITE_PORT: '${VITE_PORT:-5174}'
+      APP_URL: '${APP_URL:-http://localhost:8000}'
+      DB_CONNECTION: '${DB_CONNECTION:-pgsql}'
+      DB_HOST: '${DB_HOST:-postgres}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_DATABASE: '${DB_DATABASE:-shop}'
+      DB_USERNAME: '${DB_USERNAME:-postgres}'
+      DB_PASSWORD: '${DB_PASSWORD:-secret}'
+      REDIS_HOST: '${REDIS_HOST:-redis}'
+      REDIS_PORT: '${REDIS_PORT:-6379}'
+      REDIS_PASSWORD: '${REDIS_PASSWORD:-null}'
+    volumes:
+      - .:/var/www/html
+    networks:
+      - shop-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: shop-postgres
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_DB_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: '${DB_DATABASE:-shop}'
+      POSTGRES_USER: '${DB_USERNAME:-postgres}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD:-secret}'
+    volumes:
+      - shop-postgres-data:/var/lib/postgresql/data
+    networks:
+      - shop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-shop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:alpine
+    container_name: shop-redis
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_REDIS_PORT:-6380}:6379"
+    volumes:
+      - shop-redis-data:/data
+    networks:
+      - shop-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  shop-network:
+    driver: bridge
+
+volumes:
+  shop-postgres-data:
+    driver: local
+  shop-redis-data:
+    driver: local
