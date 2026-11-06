@@ -1,0 +1,277 @@
+@startuml SaaS_Ecommerce_Schema_Driven
+
+hide circle
+skinparam linetype ortho
+skinparam roundcorner 5
+skinparam class {
+    BackgroundColor White
+    ArrowColor #2C3E50
+    BorderColor #2C3E50
+}
+
+entity "tenants" as tenants {
+    * **id** : UUID <<PK>>
+    --
+    * name : VARCHAR(150)
+    * slug : VARCHAR(80) <<UQ>>
+    * country_code : CHAR(2)
+    * currency_code : CHAR(3)
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+}
+
+entity "tenant_configs" as tenant_configs {
+    * **tenant_id** : UUID <<PK, FK>>
+    --
+    * branding : JSONB
+    * contact_info : JSONB
+    * shipping_zones : JSONB
+    * metadata_schema : JSONB
+    * filter_config : JSONB
+    * outbound_reward_rules : JSONB
+    * updated_at : TIMESTAMP
+}
+
+entity "users" as users {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * name : VARCHAR(120)
+    * email : VARCHAR(150)
+    * password : VARCHAR(255)
+    * role : VARCHAR(40)
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, email)>>
+}
+
+entity "categories" as categories {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    parent_id : UUID <<FK>>
+    * name : VARCHAR(120)
+    * slug : VARCHAR(120)
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, slug)>>
+}
+
+entity "products" as products {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    category_id : UUID <<FK>>
+    * name : VARCHAR(180)
+    * slug : VARCHAR(200)
+    description : TEXT
+    * base_price : DECIMAL(12,2)
+    * metadata : JSONB
+    * images : JSONB
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    deleted_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, slug)>>
+    <<GIN Index: metadata jsonb_path_ops>>
+}
+
+entity "product_variants" as product_variants {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * product_id : UUID <<FK>>
+    * sku : VARCHAR(80)
+    price : DECIMAL(12,2)
+    * stock : INTEGER
+    * metadata : JSONB
+    * is_default : BOOLEAN
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    deleted_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, sku)>>
+    <<CHECK (stock >= 0)>>
+    <<GIN Index: metadata jsonb_path_ops>>
+}
+
+entity "promotions" as promotions {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * name : VARCHAR(150)
+    * type : VARCHAR(20)
+    * discount_type : VARCHAR(20)
+    * discount_value : DECIMAL(12,2)
+    * conditions : JSONB
+    * allow_stacking : BOOLEAN
+    * starts_at : TIMESTAMP
+    ends_at : TIMESTAMP
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+}
+
+entity "affiliates" as affiliates {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * name : VARCHAR(150)
+    * email : VARCHAR(150)
+    * phone : VARCHAR(30)
+    * commission_type : VARCHAR(20)
+    * commission_value : DECIMAL(12,2)
+    * payment_info : JSONB
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, email)>>
+}
+
+entity "coupons" as coupons {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * promotion_id : UUID <<FK>>
+    affiliate_id : UUID <<FK>>
+    * code : VARCHAR(50)
+    max_uses : INTEGER
+    * used_count : INTEGER
+    * starts_at : TIMESTAMP
+    ends_at : TIMESTAMP
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, code)>>
+    <<CHECK (max_uses IS NULL OR used_count <= max_uses)>>
+}
+
+entity "orders" as orders {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * order_number : VARCHAR(30)
+    * status : VARCHAR(30)
+    * customer_info : JSONB
+    * shipping_address : JSONB
+    * subtotal : DECIMAL(12,2)
+    * auto_discount_total : DECIMAL(12,2)
+    * coupon_discount_total : DECIMAL(12,2)
+    * shipping_fee : DECIMAL(12,2)
+    * total_net : DECIMAL(12,2)
+    applied_promotion_id : UUID <<FK>>
+    applied_coupon_id : UUID <<FK>>
+    * whatsapp_url : TEXT
+    completed_at : TIMESTAMP
+    cancelled_at : TIMESTAMP
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, order_number)>>
+}
+
+entity "order_items" as order_items {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * order_id : UUID <<FK>>
+    * product_id : UUID <<FK>>
+    * variant_id : UUID <<FK>>
+    * quantity : INTEGER
+    * unit_price : DECIMAL(12,2)
+    * line_total : DECIMAL(12,2)
+    * variant_snapshot : JSONB
+    * created_at : TIMESTAMP
+}
+
+entity "commissions" as commissions {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * order_id : UUID <<FK>>
+    * affiliate_id : UUID <<FK>>
+    * coupon_id : UUID <<FK>>
+    * amount : DECIMAL(12,2)
+    * status : VARCHAR(20)
+    paid_at : TIMESTAMP
+    payment_reference : VARCHAR(120)
+    payment_receipt_url : VARCHAR(255)
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, order_id)>>
+}
+
+entity "partner_stores" as partner_stores {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * name : VARCHAR(150)
+    * portal_email : VARCHAR(150)
+    * portal_password : VARCHAR(255)
+    * benefit_title : VARCHAR(200)
+    * terms_conditions : TEXT
+    * contact_info : JSONB
+    * is_active : BOOLEAN
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (tenant_id, portal_email)>>
+}
+
+entity "outbound_rewards" as outbound_rewards {
+    * **id** : UUID <<PK>>
+    --
+    * tenant_id : UUID <<FK>>
+    * order_id : UUID <<FK>>
+    * partner_store_id : UUID <<FK>>
+    * code : VARCHAR(64) <<UQ>>
+    * status : VARCHAR(20)
+    * expires_at : TIMESTAMP
+    redeemed_at : TIMESTAMP
+    email_sent_at : TIMESTAMP
+    * created_at : TIMESTAMP
+    * updated_at : TIMESTAMP
+    --
+    <<UQ (order_id, partner_store_id)>>
+}
+
+' Relaciones Principales
+tenants ||--|| tenant_configs : "1:1 gobierna"
+tenants ||--o{ users : "1:N administra"
+tenants ||--o{ categories : "1:N clasifica"
+tenants ||--o{ products : "1:N posee"
+tenants ||--o{ promotions : "1:N configura"
+tenants ||--o{ affiliates : "1:N registra"
+tenants ||--o{ orders : "1:N procesa"
+tenants ||--o{ partner_stores : "1:N alía"
+
+categories |o--o{ categories : "subcategorías"
+categories |o--o{ products : "agrupa"
+products ||--|{ product_variants : "1:N particiona stock"
+
+promotions ||--o{ coupons : "1:N habilita"
+affiliates |o--o{ coupons : "1:N refiere"
+
+orders ||--|{ order_items : "1:N contiene"
+product_variants ||--o{ order_items : "referencia"
+promotions |o--o{ orders : "descuento auto"
+coupons |o--o{ orders : "descuento cupón"
+
+orders ||--o| commissions : "1:1 genera"
+affiliates ||--o{ commissions : "1:N cobra"
+coupons ||--o{ commissions : "1:N origina"
+
+orders ||--o{ outbound_rewards : "1:N dispara"
+partner_stores ||--o{ outbound_rewards : "1:N canjea"
+
+@enduml
