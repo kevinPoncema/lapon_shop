@@ -36,6 +36,23 @@ class CartPricingService
         $rawItems = is_array($payload['items'] ?? null) ? $payload['items'] : [];
         $variantsById = $this->resolveAndValidateVariants($rawItems);
 
+        return $this->calculateCartQuoteForVariants($tenant, $variantsById, $payload);
+    }
+
+    /**
+     * @param  Collection<string, ProductVariant>  $variantsById
+     * @param  array<string, mixed>  $payload
+     * @param  list<array<string, mixed>>|null  $preloadedShippingZones
+     * @return array<string, mixed>
+     */
+    public function calculateCartQuoteForVariants(
+        Tenant $tenant,
+        Collection $variantsById,
+        array $payload,
+        ?array $preloadedShippingZones = null,
+        ?Coupon $preloadedCoupon = null
+    ): array {
+        $rawItems = is_array($payload['items'] ?? null) ? $payload['items'] : [];
         $lineTotalsResult = $this->calculateItemLineTotals($variantsById, $rawItems);
         $subtotal = $lineTotalsResult['subtotal'];
 
@@ -47,7 +64,9 @@ class CartPricingService
         ];
 
         $autoPromo = $this->evaluateAutomaticPromotions($cartMetrics);
-        $couponPromo = $this->evaluateCouponDiscount(isset($payload['coupon_code']) ? (string) $payload['coupon_code'] : null, $cartMetrics);
+        $couponPromo = $preloadedCoupon !== null
+            ? $this->evaluateCouponInstanceDiscount($preloadedCoupon, $cartMetrics)
+            : $this->evaluateCouponDiscount(isset($payload['coupon_code']) ? (string) $payload['coupon_code'] : null, $cartMetrics);
 
         $resolvedPromotions = $this->resolveStackingAndDominantDiscount($autoPromo, $couponPromo, $subtotal);
         $effectiveAuto = $resolvedPromotions['auto'];
@@ -55,10 +74,15 @@ class CartPricingService
 
         $hasFreeShipping = (bool) (($effectiveAuto['grants_free_shipping'] ?? false) || ($effectiveCoupon['grants_free_shipping'] ?? false));
 
-        $tenantConfig = $this->tenantConfigRepository->findByTenantId($tenant->id);
-        $shippingZones = $tenantConfig ? $tenantConfig->shipping_zones : [];
+        if ($preloadedShippingZones !== null) {
+            $shippingZones = $preloadedShippingZones;
+        } else {
+            $tenantConfig = $this->tenantConfigRepository->findByTenantId($tenant->id);
+            $shippingZones = $tenantConfig ? $tenantConfig->shipping_zones : [];
+        }
 
-        $shippingResult = $this->resolveShippingFee(isset($payload['shipping_zone_code']) ? (string) $payload['shipping_zone_code'] : null, $hasFreeShipping, $shippingZones);
+        $zoneCode = $payload['shipping_zone_code'] ?? ($payload['shipping_address']['region_code'] ?? null);
+        $shippingResult = $this->resolveShippingFee(isset($zoneCode) ? (string) $zoneCode : null, $hasFreeShipping, $shippingZones);
 
         return $this->consolidateCartSummary(
             $lineTotalsResult['is_valid'],
@@ -231,6 +255,15 @@ class CartPricingService
             ];
         }
 
+        return $this->evaluateCouponInstanceDiscount($coupon, $cartMetrics);
+    }
+
+    /**
+     * @param  array{subtotal: float, total_quantity: int, category_ids_lookup: array<string, bool>, variant_ids_lookup: array<string, bool>}  $cartMetrics
+     * @return array<string, mixed>
+     */
+    public function evaluateCouponInstanceDiscount(Coupon $coupon, array $cartMetrics): array
+    {
         if (! $coupon->is_active || ! $coupon->promotion || ! $coupon->promotion->is_active) {
             return [
                 'applied' => false,
