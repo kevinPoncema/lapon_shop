@@ -28,6 +28,26 @@ class EloquentProductVariantRepository implements ProductVariantRepositoryInterf
             ->first();
     }
 
+    /**
+     * @param  list<string>  $variantIds
+     * @return Collection<int, ProductVariant>
+     */
+    public function findManyActiveWithProduct(array $variantIds): Collection
+    {
+        if (empty($variantIds)) {
+            return new Collection;
+        }
+
+        return ProductVariant::query()
+            ->with('product')
+            ->whereIn('id', $variantIds)
+            ->where('is_active', true)
+            ->whereHas('product', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->get();
+    }
+
     public function existsBySku(string $sku, ?string $ignoreVariantId = null): bool
     {
         return ProductVariant::query()

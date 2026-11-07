@@ -12,6 +12,12 @@ interface ProductVariantRepositoryInterface
 
     public function findByIdWithLock(string $id): ?ProductVariant;
 
+    /**
+     * @param  list<string>  $variantIds
+     * @return Collection<int, ProductVariant>
+     */
+    public function findManyActiveWithProduct(array $variantIds): Collection;
+
     public function existsBySku(string $sku, ?string $ignoreVariantId = null): bool;
 
     /**
