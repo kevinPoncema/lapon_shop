@@ -17,7 +17,7 @@ class InvalidOrderTransitionException extends Exception
     {
         return response()->json([
             'error' => [
-                'code' => 'INVALID_ORDER_TRANSITION',
+                'code' => 'INVALID_ORDER_STATUS_TRANSITION',
                 'message' => $this->getMessage(),
             ],
         ], Response::HTTP_CONFLICT);
