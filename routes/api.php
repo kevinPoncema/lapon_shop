@@ -3,12 +3,14 @@
 use App\Http\Controllers\Api\V1\Admin\AdminAffiliateController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
+use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\V1\Admin\AdminTenantConfigController;
 use App\Http\Controllers\Api\V1\Admin\AdminVariantController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCartQuoteController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCategoryController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontCheckoutController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontConfigController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontProductController;
 use Illuminate\Http\Request;
@@ -36,6 +38,9 @@ Route::prefix('v1')
 
         Route::post('/storefront/cart/quote', [StorefrontCartQuoteController::class, 'quote'])
             ->name('api.v1.storefront.cart.quote');
+
+        Route::post('/storefront/checkout', StorefrontCheckoutController::class)
+            ->name('api.v1.storefront.checkout');
 
         // Panel Administrativo (Admin)
         Route::prefix('admin')
@@ -97,5 +102,14 @@ Route::prefix('v1')
 
                 Route::post('/affiliates', [AdminAffiliateController::class, 'store'])
                     ->name('api.v1.admin.affiliates.store');
+
+                Route::get('/orders', [AdminOrderController::class, 'index'])
+                    ->name('api.v1.admin.orders.index');
+
+                Route::get('/orders/{id}', [AdminOrderController::class, 'show'])
+                    ->name('api.v1.admin.orders.show');
+
+                Route::patch('/orders/{id}/status', [AdminOrderController::class, 'updateStatus'])
+                    ->name('api.v1.admin.orders.status.update');
             });
     });
