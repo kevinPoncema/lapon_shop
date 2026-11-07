@@ -251,12 +251,12 @@ Antes de implementar cualquier clase de producción, se deben escribir las sigui
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/07_SPEC-PTR-007_partner_stores_and_voucher_portal.md` está versionado en Git.
-2. [ ] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
-3. [ ] Todos los componentes obligatorios están implementados:
+1. [x] El documento de especificación `docs/spects/07_SPEC-PTR-007_partner_stores_and_voucher_portal.md` está versionado en Git.
+2. [x] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
+3. [x] Todos los componentes obligatorios están implementados:
    - Form Requests: `UpdateContactInfoRequest`, `UpdateOutboundRewardRulesRequest`, `CreatePartnerStoreRequest`, `UpdatePartnerStoreRequest`.
    - Controladores: `AdminPartnerStoreController`, `PartnerVoucherController` y métodos adicionales en `AdminTenantConfigController`.
    - Servicios Orquestadores: `PartnerStoreService`, `PartnerVoucherRedemptionService` y ampliación en `TenantConfigService`.
    - Repositorios: `PartnerStoreRepositoryInterface` y `OutboundRewardRepositoryInterface` con sus implementaciones Eloquent.
-4. [ ] Queda garantizado el doble aislamiento: ni fugas entre tenants, ni visibilidad cruzada entre dos comercios aliados del mismo tenant, ni filtración de PII sensible del comprador.
-5. [ ] La suite completa de Pest pasa al 100% (`vendor/bin/pest`), PHPStan reporta 0 errores y Pint formatea sin pendientes.
+4. [x] Queda garantizado el doble aislamiento: ni fugas entre tenants, ni visibilidad cruzada entre dos comercios aliados del mismo tenant, ni filtración de PII sensible del comprador.
+5. [x] La suite completa de Pest pasa al 100% (`vendor/bin/pest`), PHPStan reporta 0 errores y Pint formatea sin pendientes.
