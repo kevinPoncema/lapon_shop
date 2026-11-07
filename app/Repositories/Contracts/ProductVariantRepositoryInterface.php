@@ -12,6 +12,8 @@ interface ProductVariantRepositoryInterface
 
     public function findByIdWithLock(string $id): ?ProductVariant;
 
+    public function findByIdWithLockIncludingTrashed(string $id): ?ProductVariant;
+
     /**
      * @param  list<string>  $variantIds
      * @return Collection<int, ProductVariant>

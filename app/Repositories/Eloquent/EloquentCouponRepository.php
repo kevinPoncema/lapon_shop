@@ -18,6 +18,15 @@ class EloquentCouponRepository implements CouponRepositoryInterface
         return Coupon::query()->with(['promotion', 'affiliate'])->find($id);
     }
 
+    public function findByIdWithLock(string $id): ?Coupon
+    {
+        return Coupon::query()
+            ->with(['promotion', 'affiliate'])
+            ->where('id', $id)
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function findByCodeWithPromotion(string $code): ?Coupon
     {
         return Coupon::query()

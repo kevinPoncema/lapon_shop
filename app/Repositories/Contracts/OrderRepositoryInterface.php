@@ -13,6 +13,8 @@ interface OrderRepositoryInterface
 
     public function findDetailForAdmin(string $id): ?Order;
 
+    public function findDetailedById(string $id): ?Order;
+
     public function existsByOrderNumber(string $orderNumber): bool;
 
     /**

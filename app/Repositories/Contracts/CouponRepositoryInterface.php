@@ -9,6 +9,8 @@ interface CouponRepositoryInterface
 {
     public function findById(string $id): ?Coupon;
 
+    public function findByIdWithLock(string $id): ?Coupon;
+
     public function findByCodeWithPromotion(string $code): ?Coupon;
 
     public function findByCodeWithLock(string $code): ?Coupon;

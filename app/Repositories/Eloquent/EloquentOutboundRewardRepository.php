@@ -6,6 +6,7 @@ use App\Context\TenantContext;
 use App\Models\OutboundReward;
 use App\Models\PartnerStore;
 use App\Repositories\Contracts\OutboundRewardRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 class EloquentOutboundRewardRepository implements OutboundRewardRepositoryInterface
@@ -29,6 +30,14 @@ class EloquentOutboundRewardRepository implements OutboundRewardRepositoryInterf
         return OutboundReward::query()->where('code', $code)->exists();
     }
 
+    public function existsForOrderAndPartner(string $orderId, string $partnerStoreId): bool
+    {
+        return OutboundReward::query()
+            ->where('order_id', $orderId)
+            ->where('partner_store_id', $partnerStoreId)
+            ->exists();
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -37,5 +46,27 @@ class EloquentOutboundRewardRepository implements OutboundRewardRepositoryInterf
         $data['tenant_id'] = $this->tenantContext->id();
 
         return OutboundReward::query()->create($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function createReward(array $attributes): OutboundReward
+    {
+        return $this->create($attributes);
+    }
+
+    public function findByIdWithRelations(string $rewardId): ?OutboundReward
+    {
+        return OutboundReward::query()
+            ->with(['order', 'partnerStore'])
+            ->find($rewardId);
+    }
+
+    public function markEmailSent(OutboundReward $reward, Carbon $sentAt): OutboundReward
+    {
+        $reward->update(['email_sent_at' => $sentAt]);
+
+        return $reward->fresh();
     }
 }

@@ -28,6 +28,15 @@ class EloquentProductVariantRepository implements ProductVariantRepositoryInterf
             ->first();
     }
 
+    public function findByIdWithLockIncludingTrashed(string $id): ?ProductVariant
+    {
+        return ProductVariant::withTrashed()
+            ->with('product')
+            ->where('id', $id)
+            ->lockForUpdate()
+            ->first();
+    }
+
     /**
      * @param  list<string>  $variantIds
      * @return Collection<int, ProductVariant>

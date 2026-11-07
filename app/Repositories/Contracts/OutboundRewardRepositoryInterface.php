@@ -4,6 +4,7 @@ namespace App\Repositories\Contracts;
 
 use App\Models\OutboundReward;
 use App\Models\PartnerStore;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 interface OutboundRewardRepositoryInterface
@@ -15,8 +16,19 @@ interface OutboundRewardRepositoryInterface
 
     public function existsByCode(string $code): bool;
 
+    public function existsForOrderAndPartner(string $orderId, string $partnerStoreId): bool;
+
     /**
      * @param  array<string, mixed>  $data
      */
     public function create(array $data): OutboundReward;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function createReward(array $attributes): OutboundReward;
+
+    public function findByIdWithRelations(string $rewardId): ?OutboundReward;
+
+    public function markEmailSent(OutboundReward $reward, Carbon $sentAt): OutboundReward;
 }

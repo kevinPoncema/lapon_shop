@@ -9,6 +9,7 @@ use App\Repositories\Contracts\CouponRepositoryInterface;
 use App\Repositories\Contracts\OrderItemRepositoryInterface;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Contracts\OutboundRewardRepositoryInterface;
+use App\Repositories\Contracts\PartnerStoreRepositoryInterface;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Contracts\ProductVariantRepositoryInterface;
 use App\Repositories\Contracts\PromotionRepositoryInterface;
@@ -20,6 +21,7 @@ use App\Repositories\Eloquent\EloquentCouponRepository;
 use App\Repositories\Eloquent\EloquentOrderItemRepository;
 use App\Repositories\Eloquent\EloquentOrderRepository;
 use App\Repositories\Eloquent\EloquentOutboundRewardRepository;
+use App\Repositories\Eloquent\EloquentPartnerStoreRepository;
 use App\Repositories\Eloquent\EloquentProductRepository;
 use App\Repositories\Eloquent\EloquentProductVariantRepository;
 use App\Repositories\Eloquent\EloquentPromotionRepository;
@@ -45,6 +47,7 @@ class RepositoryServiceProvider extends ServiceProvider
         OrderItemRepositoryInterface::class => EloquentOrderItemRepository::class,
         CommissionRepositoryInterface::class => EloquentCommissionRepository::class,
         OutboundRewardRepositoryInterface::class => EloquentOutboundRewardRepository::class,
+        PartnerStoreRepositoryInterface::class => EloquentPartnerStoreRepository::class,
     ];
 
     /**
@@ -95,6 +98,10 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             OutboundRewardRepositoryInterface::class,
             EloquentOutboundRewardRepository::class
+        );
+        $this->app->bind(
+            PartnerStoreRepositoryInterface::class,
+            EloquentPartnerStoreRepository::class
         );
     }
 

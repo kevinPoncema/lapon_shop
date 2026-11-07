@@ -6,6 +6,7 @@ use App\Context\TenantContext;
 use App\Models\Order;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class EloquentOrderRepository implements OrderRepositoryInterface
 {
@@ -36,6 +37,11 @@ class EloquentOrderRepository implements OrderRepositoryInterface
             ->find($id);
     }
 
+    public function findDetailedById(string $id): ?Order
+    {
+        return $this->findDetailForAdmin($id);
+    }
+
     public function existsByOrderNumber(string $orderNumber): bool
     {
         return Order::query()->where('order_number', $orderNumber)->exists();
@@ -56,15 +62,21 @@ class EloquentOrderRepository implements OrderRepositoryInterface
                 $query->where('created_at', '>=', $filters['date_from']);
             })
             ->when(! empty($filters['date_to']), function ($query) use ($filters) {
-                $query->where('created_at', '<=', $filters['date_to']);
+                $dateTo = (string) $filters['date_to'];
+                if (strlen($dateTo) === 10) {
+                    $dateTo .= ' 23:59:59';
+                }
+                $query->where('created_at', '<=', $dateTo);
             })
-            ->when(! empty($filters['search']), function ($query) use ($filters) {
-                $search = '%'.trim((string) $filters['search']).'%';
-                $query->where(function ($q) use ($search) {
-                    $q->where('order_number', 'ILIKE', $search)
-                        ->orWhere('customer_info->full_name', 'ILIKE', $search)
-                        ->orWhere('customer_info->whatsapp_phone', 'ILIKE', $search)
-                        ->orWhere('customer_info->email', 'ILIKE', $search);
+            ->when(! empty($filters['q']) || ! empty($filters['search']), function ($query) use ($filters) {
+                $rawSearch = ! empty($filters['q']) ? $filters['q'] : $filters['search'];
+                $search = '%'.trim((string) $rawSearch).'%';
+                $operator = DB::getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+                $query->where(function ($q) use ($search, $operator) {
+                    $q->where('order_number', $operator, $search)
+                        ->orWhere('customer_info->full_name', $operator, $search)
+                        ->orWhere('customer_info->whatsapp_phone', $operator, $search)
+                        ->orWhere('customer_info->email', $operator, $search);
                 });
             })
             ->orderByDesc('created_at')
