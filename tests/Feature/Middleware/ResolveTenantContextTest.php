@@ -177,6 +177,41 @@ test('caches tenant resolution avoiding redundant database queries', function ()
     expect($tenantQueries)->toBeEmpty();
 });
 
+test('stores plain array in cache compatible with disabled serializable classes and self-heals incomplete objects', function () {
+    Cache::flush();
+
+    $tenant = Tenant::factory()->create([
+        'slug' => 'tienda-redis-safe',
+        'is_active' => true,
+    ]);
+
+    $this->withHeader('X-Tenant-Slug', 'tienda-redis-safe')
+        ->getJson('/test-tenant-resolution')
+        ->assertOk();
+
+    $cachedPayload = Cache::get("tenant:slug:{$tenant->slug}");
+
+    expect($cachedPayload)->toBeArray();
+
+    $roundTripped = unserialize(serialize($cachedPayload), ['allowed_classes' => false]);
+
+    expect($roundTripped)->toBeArray()
+        ->and($roundTripped['id'])->toBe($tenant->id)
+        ->and($roundTripped['slug'])->toBe('tienda-redis-safe');
+
+    // Simulate a legacy cached Eloquent object unserialized with allowed_classes = false
+    $incompleteObject = unserialize(serialize($tenant), ['allowed_classes' => false]);
+    Cache::put("tenant:slug:{$tenant->slug}", $incompleteObject, 3600);
+
+    $this->withHeader('X-Tenant-Slug', 'tienda-redis-safe')
+        ->getJson('/test-tenant-resolution')
+        ->assertOk()
+        ->assertJson([
+            'tenant_id' => $tenant->id,
+            'tenant_slug' => 'tienda-redis-safe',
+        ]);
+});
+
 test('activates tenant scope automatically isolating queries to resolved tenant', function () {
     $context = app(TenantContext::class);
 

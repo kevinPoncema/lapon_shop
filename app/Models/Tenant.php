@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * @property string $id
@@ -62,6 +64,46 @@ class Tenant extends Model
     public function active(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Resolve a tenant by normalized slug using a plain-array cache payload
+     * compatible with `cache.serializable_classes = false`.
+     */
+    public static function findCachedBySlug(string $slug): ?self
+    {
+        $normalized = Str::lower(trim($slug));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $cacheKey = "tenant:slug:{$normalized}";
+        $cached = Cache::get($cacheKey);
+
+        if ($cached instanceof self) {
+            return $cached;
+        }
+
+        if (is_array($cached)) {
+            /** @var array<string, mixed> $cached */
+            return (new self)->newFromBuilder($cached);
+        }
+
+        $tenant = self::query()
+            ->where('slug', $normalized)
+            ->first();
+
+        if ($tenant === null) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $attributes */
+        $attributes = $tenant->getAttributes();
+
+        Cache::put($cacheKey, $attributes, 3600);
+
+        return $tenant;
     }
 
     /**

@@ -147,22 +147,45 @@ class ProductFacetedSearchQuery
         $affectsStock = $definition !== null
             ? (bool) ($definition['affects_stock'] ?? false)
             : true;
+        $normalizedValue = $this->coerceAttributeFilterValue($value, $definition);
 
         if ($affectsStock) {
-            $query->whereHas('variants', function (Builder $variantQuery) use ($key, $value, $inStockOnly) {
+            $query->whereHas('variants', function (Builder $variantQuery) use ($key, $normalizedValue, $inStockOnly) {
                 $variantQuery->where('is_active', true);
 
                 if ($inStockOnly) {
                     $variantQuery->where('stock', '>', 0);
                 }
 
-                $variantQuery->whereJsonContains("metadata->{$key}", $value);
+                $variantQuery->whereJsonContains("metadata->{$key}", $normalizedValue);
             });
 
             return;
         }
 
-        $query->whereJsonContains("metadata->{$key}", $value);
+        $query->whereJsonContains("metadata->{$key}", $normalizedValue);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $definition
+     */
+    protected function coerceAttributeFilterValue(mixed $value, ?array $definition): mixed
+    {
+        if (! is_string($value) || $definition === null) {
+            return $value;
+        }
+
+        $dataType = (string) ($definition['data_type'] ?? 'text');
+
+        if ($dataType === 'boolean') {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $value;
+        }
+
+        if ($dataType === 'number' && is_numeric($value)) {
+            return str_contains($value, '.') ? (float) $value : (int) $value;
+        }
+
+        return $value;
     }
 
     /**

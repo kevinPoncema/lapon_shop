@@ -7,7 +7,6 @@ use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -56,13 +55,7 @@ class ResolveTenantContext
 
     private function resolveTenantWithCache(string $slug): ?Tenant
     {
-        $cacheKey = "tenant:slug:{$slug}";
-
-        return Cache::remember($cacheKey, 3600, function () use ($slug): ?Tenant {
-            return Tenant::query()
-                ->where('slug', $slug)
-                ->first();
-        });
+        return Tenant::findCachedBySlug($slug);
     }
 
     private function isTenantAvailable(?Tenant $tenant): bool
