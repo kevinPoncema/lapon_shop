@@ -343,7 +343,7 @@ Antes de implementar cualquier controlador, servicio, job o repositorio, se debe
 
 ## 8. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [x] El documento de especificación `docs/spects/order_lifecycle_commissions_and_rewards.md` está versionado en Git.
+1. [x] El documento de especificación `docs/spects/06_SPEC-ORD-006_order_lifecycle_commissions_and_rewards.md` está versionado en Git.
 2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo inicial en rojo (`RED`).
 3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `FilterOrdersRequest`, `UpdateOrderStatusRequest`, `SettleCommissionsRequest`.

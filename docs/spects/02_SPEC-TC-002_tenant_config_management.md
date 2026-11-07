@@ -432,7 +432,7 @@ En apego a la metodología **Test-First**, la implementación solo podrá dar in
 
 ## 8. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/tenant_config_management.md` está versionado en Git.
+1. [ ] El documento de especificación `docs/spects/02_SPEC-TC-002_tenant_config_management.md` está versionado en Git.
 2. [ ] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
 3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `UpdateCatalogSchemaRequest`, `UpdateBrandingConfigRequest`, `UpdateShippingZonesRequest`.

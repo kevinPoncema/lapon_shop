@@ -435,7 +435,7 @@ Route::prefix('v1')
 
 ## 9. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [x] El archivo de especificación `docs/spects/middleware_resolve_tenant_context.md` está versionado en Git.
+1. [x] El archivo de especificación `docs/spects/01_SPEC-MW-001_middleware_resolve_tenant_context.md` está versionado en Git.
 2. [x] Se escribe la prueba `tests/Feature/Middleware/ResolveTenantContextTest.php` antes de implementar el middleware y se verifica su fallo inicial (`RED`).
 3. [x] El middleware `App\Http\Middleware\ResolveTenantContext` implementa estrictamente los métodos auxiliares privados descritos sin lógica monolítica en `handle()`.
 4. [x] Ante falta de cabecera, slug inexistente o `is_active = false`, responde exactamente `404 Not Found` con `code: TENANT_NOT_FOUND`.

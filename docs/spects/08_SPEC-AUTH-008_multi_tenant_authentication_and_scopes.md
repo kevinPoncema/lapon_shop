@@ -253,7 +253,7 @@ Antes de implementar controladores, middlewares o servicios de autenticación, s
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/multi_tenant_authentication_and_scopes.md` está versionado en Git.
+1. [ ] El documento de especificación `docs/spects/08_SPEC-AUTH-008_multi_tenant_authentication_and_scopes.md` está versionado en Git.
 2. [ ] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
 3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
    - Adaptación de `PartnerStore` como `Authenticatable` con `HasApiTokens`.

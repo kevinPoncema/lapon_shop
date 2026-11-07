@@ -313,7 +313,7 @@ En cumplimiento de la regla **Test-First**, se deben escribir primero las prueba
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [x] El documento `docs/spects/cart_quote_and_promotions.md` está versionado en Git.
+1. [x] El documento `docs/spects/04_SPEC-PRM-004_cart_quote_and_promotions.md` está versionado en Git.
 2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
 3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `CartQuoteRequest`, `CreatePromotionRequest`, `CreateCouponRequest`.

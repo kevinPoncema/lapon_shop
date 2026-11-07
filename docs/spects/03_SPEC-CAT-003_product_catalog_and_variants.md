@@ -469,7 +469,7 @@ Siguiendo la metodología **Test-First**, se deben escribir primero las pruebas 
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [x] El documento `docs/spects/product_catalog_and_variants.md` está registrado en Git.
+1. [x] El documento `docs/spects/03_SPEC-CAT-003_product_catalog_and_variants.md` está registrado en Git.
 2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
 3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `CreateProductRequest`, `UpdateProductRequest`, `AdjustVariantStockRequest`, `FilterProductsRequest`, `CategoryRequest`.

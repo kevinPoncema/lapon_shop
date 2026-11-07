@@ -251,7 +251,7 @@ Antes de implementar cualquier clase de producción, se deben escribir las sigui
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/partner_stores_and_voucher_portal.md` está versionado en Git.
+1. [ ] El documento de especificación `docs/spects/07_SPEC-PTR-007_partner_stores_and_voucher_portal.md` está versionado en Git.
 2. [ ] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
 3. [ ] Todos los componentes obligatorios están implementados:
    - Form Requests: `UpdateContactInfoRequest`, `UpdateOutboundRewardRulesRequest`, `CreatePartnerStoreRequest`, `UpdatePartnerStoreRequest`.
