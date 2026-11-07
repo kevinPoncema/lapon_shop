@@ -62,8 +62,9 @@ class EnsureTenantMembership
             ], Response::HTTP_FORBIDDEN);
         }
 
+        /** @var PersonalAccessToken|null $token */
         $token = $actor->currentAccessToken();
-        if ($token->exists && ! $actor->tokenCan('tenant:admin') && ! $actor->tokenCan('tenant:staff') && ! $actor->tokenCan('*')) {
+        if ($token?->exists && ! $actor->tokenCan('tenant:admin') && ! $actor->tokenCan('tenant:staff') && ! $actor->tokenCan('*')) {
             return new JsonResponse([
                 'error' => [
                     'code' => 'FORBIDDEN_SCOPE',

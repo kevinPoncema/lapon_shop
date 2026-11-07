@@ -5,7 +5,6 @@ namespace App\Services\Checkout;
 use App\Context\TenantContext;
 use App\Exceptions\Domain\CheckoutTransactionInProgressException;
 use App\Exceptions\Domain\InsufficientStockException;
-use App\Exceptions\Domain\InvalidOrderTransitionException;
 use App\Models\Commission;
 use App\Models\Coupon;
 use App\Models\Order;
@@ -15,13 +14,10 @@ use App\Repositories\Contracts\CommissionRepositoryInterface;
 use App\Repositories\Contracts\CouponRepositoryInterface;
 use App\Repositories\Contracts\OrderItemRepositoryInterface;
 use App\Repositories\Contracts\OrderRepositoryInterface;
-use App\Repositories\Contracts\OutboundRewardRepositoryInterface;
 use App\Repositories\Contracts\ProductVariantRepositoryInterface;
 use App\Repositories\Contracts\TenantConfigRepositoryInterface;
 use App\Services\Cart\CartPricingService;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -35,7 +31,6 @@ class CheckoutOrchestratorService
         protected OrderRepositoryInterface $orderRepository,
         protected OrderItemRepositoryInterface $orderItemRepository,
         protected CommissionRepositoryInterface $commissionRepository,
-        protected OutboundRewardRepositoryInterface $outboundRewardRepository,
         protected TenantConfigRepositoryInterface $tenantConfigRepository,
         protected CartPricingService $cartPricingService,
         protected WhatsAppOrderMessageBuilder $whatsAppBuilder
@@ -306,117 +301,5 @@ class CheckoutOrchestratorService
     {
         $cacheKey = "idempotency:{$tenant->id}:{$idempotencyKey}";
         Cache::put($cacheKey, $payload, 86400);
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, Order>
-     */
-    public function paginateAdminOrders(Tenant $tenant, array $filters, int $perPage = 20): LengthAwarePaginator
-    {
-        return $this->orderRepository->paginateForAdmin($filters, $perPage);
-    }
-
-    public function getAdminOrderDetail(Tenant $tenant, string $orderId): Order
-    {
-        $order = $this->orderRepository->findDetailForAdmin($orderId);
-
-        if (! $order) {
-            throw new ModelNotFoundException('Orden no encontrada.');
-        }
-
-        return $order;
-    }
-
-    public function orchestrateOrderStatusTransition(Tenant $tenant, string $orderId, string $targetStatus, ?string $paymentNotes = null): Order
-    {
-        return DB::transaction(function () use ($tenant, $orderId, $targetStatus): Order {
-            $order = $this->orderRepository->findByIdWithLock($orderId);
-
-            if (! $order) {
-                throw new ModelNotFoundException('Orden no encontrada.');
-            }
-
-            if ($order->status !== 'PENDIENTE_PAGO') {
-                throw new InvalidOrderTransitionException('La orden no se encuentra en un estado que permita esta transición.');
-            }
-
-            if ($targetStatus === 'COMPLETADA') {
-                $this->orderRepository->updateStatus($order, [
-                    'status' => 'COMPLETADA',
-                    'completed_at' => now(),
-                ]);
-
-                $commission = $this->commissionRepository->findByOrderId($order->id);
-                if ($commission && $commission->status === 'RETENIDA') {
-                    $this->commissionRepository->updateStatus($commission, 'APROBADA');
-                }
-
-                $this->evaluateAndEmitOutboundReward($tenant, $order);
-            } elseif ($targetStatus === 'CANCELADA') {
-                $this->orderRepository->updateStatus($order, [
-                    'status' => 'CANCELADA',
-                    'cancelled_at' => now(),
-                ]);
-
-                foreach ($order->items as $item) {
-                    if ($item->variant_id) {
-                        $variant = $this->variantRepository->findByIdWithLock($item->variant_id);
-                        if ($variant) {
-                            $this->variantRepository->incrementStock($variant, $item->quantity);
-                        }
-                    }
-                }
-
-                if ($order->applied_coupon_id) {
-                    $coupon = $this->couponRepository->findById($order->applied_coupon_id);
-                    if ($coupon) {
-                        $this->couponRepository->decrementUsage($coupon);
-                    }
-                }
-
-                $commission = $this->commissionRepository->findByOrderId($order->id);
-                if ($commission) {
-                    $this->commissionRepository->updateStatus($commission, 'ANULADA');
-                }
-            }
-
-            return $order->fresh(['items', 'commission', 'outboundRewards']);
-        });
-    }
-
-    protected function evaluateAndEmitOutboundReward(Tenant $tenant, Order $order): void
-    {
-        $config = $this->tenantConfigRepository->findByTenantId($tenant->id);
-        $rules = $config ? $config->outbound_reward_rules : [];
-
-        if (empty($rules) || ! ($rules['is_enabled'] ?? false)) {
-            return;
-        }
-
-        $minTotal = (float) ($rules['min_order_total'] ?? 0);
-        if ((float) $order->total_net < $minTotal) {
-            return;
-        }
-
-        $partnerStores = $this->outboundRewardRepository->findActivePartnerStoresForTenant();
-        if ($partnerStores->isEmpty()) {
-            return;
-        }
-
-        $partnerStore = $partnerStores->first();
-        $expirationDays = (int) ($rules['expiration_days'] ?? 30);
-
-        do {
-            $code = 'RWD-'.strtoupper(Str::random(12));
-        } while ($this->outboundRewardRepository->existsByCode($code));
-
-        $this->outboundRewardRepository->create([
-            'order_id' => $order->id,
-            'partner_store_id' => $partnerStore->id,
-            'code' => $code,
-            'status' => 'EMITIDO',
-            'expires_at' => now()->addDays($expirationDays),
-        ]);
     }
 }
