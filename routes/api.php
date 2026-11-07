@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminAffiliateController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
+use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\V1\Admin\AdminTenantConfigController;
 use App\Http\Controllers\Api\V1\Admin\AdminVariantController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontCartQuoteController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCategoryController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontConfigController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontProductController;
@@ -29,6 +33,9 @@ Route::prefix('v1')
 
         Route::get('/storefront/products/{slug}', [StorefrontProductController::class, 'show'])
             ->name('api.v1.storefront.products.show');
+
+        Route::post('/storefront/cart/quote', [StorefrontCartQuoteController::class, 'quote'])
+            ->name('api.v1.storefront.cart.quote');
 
         // Panel Administrativo (Admin)
         Route::prefix('admin')
@@ -69,5 +76,26 @@ Route::prefix('v1')
 
                 Route::patch('/variants/{id}/status', [AdminVariantController::class, 'updateStatus'])
                     ->name('api.v1.admin.variants.status.update');
+
+                Route::get('/promotions', [AdminPromotionController::class, 'index'])
+                    ->name('api.v1.admin.promotions.index');
+
+                Route::post('/promotions', [AdminPromotionController::class, 'store'])
+                    ->name('api.v1.admin.promotions.store');
+
+                Route::put('/promotions/{id}', [AdminPromotionController::class, 'update'])
+                    ->name('api.v1.admin.promotions.update');
+
+                Route::get('/coupons', [AdminCouponController::class, 'index'])
+                    ->name('api.v1.admin.coupons.index');
+
+                Route::post('/coupons', [AdminCouponController::class, 'store'])
+                    ->name('api.v1.admin.coupons.store');
+
+                Route::get('/affiliates', [AdminAffiliateController::class, 'index'])
+                    ->name('api.v1.admin.affiliates.index');
+
+                Route::post('/affiliates', [AdminAffiliateController::class, 'store'])
+                    ->name('api.v1.admin.affiliates.store');
             });
     });
