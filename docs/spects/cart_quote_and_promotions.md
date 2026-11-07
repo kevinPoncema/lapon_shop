@@ -313,15 +313,15 @@ En cumplimiento de la regla **Test-First**, se deben escribir primero las prueba
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento `docs/spects/cart_quote_and_promotions.md` está versionado en Git.
-2. [ ] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
-3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
+1. [x] El documento `docs/spects/cart_quote_and_promotions.md` está versionado en Git.
+2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
+3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `CartQuoteRequest`, `CreatePromotionRequest`, `CreateCouponRequest`.
    - Controlador: `StorefrontCartQuoteController` y controladores de administración.
    - Servicio de Dominio Orquestador: `CartPricingService` con sus métodos auxiliares atómicos.
    - Repositorios: `PromotionRepositoryInterface` y `CouponRepositoryInterface`.
-4. [ ] La cotización responde en $\le 30\text{ ms}$ y maneja cupones inválidos con elegancia sin abortar el carrito.
-5. [ ] Las promociones respetan rigurosamente la regla de no apilamiento (`allow_stacking`).
-6. [ ] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
-7. [ ] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
-8. [ ] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+4. [x] La cotización responde en $\le 30\text{ ms}$ y maneja cupones inválidos con elegancia sin abortar el carrito.
+5. [x] Las promociones respetan rigurosamente la regla de no apilamiento (`allow_stacking`).
+6. [x] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
+7. [x] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
+8. [x] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
