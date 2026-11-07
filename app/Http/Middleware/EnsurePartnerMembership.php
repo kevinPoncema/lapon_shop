@@ -23,13 +23,22 @@ class EnsurePartnerMembership
     {
         $partner = Auth::guard('sanctum')->user();
 
-        if (! ($partner instanceof PartnerStore)) {
+        if ($partner === null) {
             return new JsonResponse([
                 'error' => [
                     'code' => 'UNAUTHENTICATED',
                     'message' => 'No autenticado o credenciales de comercio aliado inválidas.',
                 ],
             ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if (! ($partner instanceof PartnerStore)) {
+            return new JsonResponse([
+                'error' => [
+                    'code' => 'FORBIDDEN',
+                    'message' => 'Acceso denegado: Se requieren credenciales de comercio aliado.',
+                ],
+            ], Response::HTTP_FORBIDDEN);
         }
 
         if (! $this->tenantContext->isSet()) {

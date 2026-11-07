@@ -54,6 +54,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Token Expiration Policies (Multi-Tenant & Partner Portal)
+    |--------------------------------------------------------------------------
+    |
+    | Defines explicit expiration lifetimes in minutes for issued Sanctum tokens.
+    | Admin tokens default to 7 days (10080 minutes) and Partner POS tokens
+    | default to 30 days (43200 minutes).
+    |
+    */
+
+    'admin_expiration_minutes' => (int) env('SANCTUM_ADMIN_EXPIRATION_MINUTES', 10080),
+
+    'partner_expiration_minutes' => (int) env('SANCTUM_PARTNER_EXPIRATION_MINUTES', 43200),
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |

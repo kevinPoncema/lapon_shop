@@ -14,6 +14,7 @@ use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Contracts\ProductVariantRepositoryInterface;
 use App\Repositories\Contracts\PromotionRepositoryInterface;
 use App\Repositories\Contracts\TenantConfigRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\EloquentAffiliateRepository;
 use App\Repositories\Eloquent\EloquentCategoryRepository;
 use App\Repositories\Eloquent\EloquentCommissionRepository;
@@ -26,6 +27,7 @@ use App\Repositories\Eloquent\EloquentProductRepository;
 use App\Repositories\Eloquent\EloquentProductVariantRepository;
 use App\Repositories\Eloquent\EloquentPromotionRepository;
 use App\Repositories\Eloquent\EloquentTenantConfigRepository;
+use App\Repositories\Eloquent\EloquentUserRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -48,6 +50,7 @@ class RepositoryServiceProvider extends ServiceProvider
         CommissionRepositoryInterface::class => EloquentCommissionRepository::class,
         OutboundRewardRepositoryInterface::class => EloquentOutboundRewardRepository::class,
         PartnerStoreRepositoryInterface::class => EloquentPartnerStoreRepository::class,
+        UserRepositoryInterface::class => EloquentUserRepository::class,
     ];
 
     /**
@@ -55,6 +58,10 @@ class RepositoryServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(
+            UserRepositoryInterface::class,
+            EloquentUserRepository::class
+        );
         $this->app->bind(
             TenantConfigRepositoryInterface::class,
             EloquentTenantConfigRepository::class
