@@ -123,4 +123,13 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Stress Test Seeder Settings
+    |--------------------------------------------------------------------------
+    */
+
+    'seed_stress_catalog' => (bool) env('SEED_STRESS_CATALOG', false),
+    'catalog_stress_count' => (int) env('CATALOG_STRESS_COUNT', 1500),
+
 ];

@@ -54,6 +54,12 @@ class DemoTenantSeeder extends Seeder
                     $marketing,
                     $partners['espresso']
                 );
+
+                // Descomenta la siguiente línea para generar miles de productos para pruebas de estrés y latencia:
+                // $this->call(DemoCatalogStressSeeder::class);
+                if ((bool) config('app.seed_stress_catalog', false)) {
+                    $this->call(DemoCatalogStressSeeder::class);
+                }
             });
 
             return $tenant;
