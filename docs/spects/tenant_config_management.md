@@ -51,16 +51,24 @@ flowchart TD
         FR --> CTRL["Controller (Delgado / Sin lógica SQL)"]
     end
     
-    subgraph Capa_Dominio["3. Capa de Dominio y Negocio"]
-        CTRL -->|"Lecturas Simples / Caché"| SVC_CACHE["TenantConfigCacheService (Redis)"]
-        CTRL -->|"Mutaciones Complejas"| ORCH["UpdateCatalogSchemaOrchestrator"]
-        ORCH --> S_VAL["CatalogSchemaValidatorService"]
-        ORCH --> S_PURGE["OrphanFilterPurgerService"]
+    subgraph Capa_Dominio["3. Capa de Dominio y Negocio (Servicio Orquestador)"]
+        CTRL -->|"Invocación de Dominio"| SVC["TenantConfigService (Servicio de Dominio Orquestador)"]
+        SVC -->|"Flujo Maestro 1"| M_CAT["orchestrateCatalogSchemaUpdate()"]
+        SVC -->|"Flujo Maestro 2"| M_BRAND["orchestrateBrandingUpdate()"]
+        SVC -->|"Flujo Maestro 3"| M_SHIP["orchestrateShippingZonesUpdate()"]
+        SVC -->|"Flujo Maestro 4"| M_BOOT["getStorefrontBootstrap()"]
+        
+        subgraph Metodos_Auxiliares["Métodos Auxiliares Atómicos"]
+            M_CAT --> AUX1["validateReservedKeywords()"]
+            M_CAT --> AUX2["purgeOrphanFilters()"]
+            M_CAT --> AUX_INV["invalidateStorefrontCache()"]
+            M_BRAND --> AUX3["sanitizeBrandingPayload()"]
+            M_SHIP --> AUX4["validateShippingZones()"]
+        end
     end
     
     subgraph Capa_Acceso_Datos["4. Capa de Persistencia"]
-        ORCH --> REPO["TenantConfigRepositoryInterface"]
-        SVC_CACHE --> REPO
+        SVC --> REPO["TenantConfigRepositoryInterface"]
         REPO --> ELO_REPO["EloquentTenantConfigRepository"]
         ELO_REPO --> MODEL["Model: TenantConfig"]
         MODEL --> DB[("PostgreSQL 16+")]
@@ -95,28 +103,48 @@ La implementación de la rebanada vertical debe constar de los siguientes compon
 
 ### 4.2. Capa de Controladores (Thin Controllers)
 * **`StorefrontConfigController` (Invokable `__invoke`):**
-  - Lee de forma prioritaria la configuración desde `TenantConfigCacheService`.
+  - Delega directamente en el método de orquestación `TenantConfigService::getStorefrontBootstrap()`.
   - Retorna respuesta `200 OK` formateada exclusivamente con los datos públicos (ocultando datos sensibles o administrativos).
 * **`AdminTenantConfigController`:**
-  - `show()`: Retorna la configuración completa del inquilino autenticado.
-  - `updateCatalogSchema()`: Delega en `UpdateCatalogSchemaOrchestrator` y retorna la configuración actualizada.
-  - `updateBranding()`: Delega en el repositorio y purga la caché de vitrina.
-  - `updateShippingZones()`: Delega en el repositorio y purga la caché de vitrina.
+  - `show()`: Delega en `TenantConfigService::getAdminConfig()` y retorna la configuración completa del inquilino autenticado.
+  - `updateCatalogSchema()`: Delega en el método orquestador `TenantConfigService::orchestrateCatalogSchemaUpdate()` y retorna la configuración actualizada.
+  - `updateBranding()`: Delega en el método orquestador `TenantConfigService::orchestrateBrandingUpdate()` y retorna la configuración actualizada.
+  - `updateShippingZones()`: Delega en el método orquestador `TenantConfigService::orchestrateShippingZonesUpdate()` y retorna la configuración actualizada.
 
-### 4.3. Capa de Dominio y Negocio (Services & Orchestrator)
-* **`TenantConfigCacheService`:**
-  - Centraliza la clave de caché: `tenant:{tenant_id}:storefront_config`.
-  - Método `getStorefrontConfig(Tenant $tenant): array` con TTL de 3600 segundos (1 hora).
-  - Método `invalidate(string $tenantId): void` (`Cache::forget`).
-* **`CatalogSchemaValidatorService`:**
-  - Servicio unitario que valida que ningún atributo colisione con nombres reservados y que los tipos soportados sean correctos.
-* **`UpdateCatalogSchemaOrchestrator` (Patrón Orquestador):**
-  - Función maestra `orchestrateUpdate(Tenant $tenant, array $payload): TenantConfig`.
-  - Métodos auxiliares atómicos:
-    1. `validateSchemaRules(array $metadataSchema)`
-    2. `purgeOrphanFilters(array $metadataSchema, array $filterConfig): array`
-    3. `persistConfig(string $tenantId, array $metadataSchema, array $cleanedFilterConfig): TenantConfig`
-    4. `invalidateTenantCache(string $tenantId): void`
+### 4.3. Capa de Dominio y Negocio: Servicio de Dominio Orquestador (`TenantConfigService`)
+
+En la arquitectura del sistema, **los orquestadores son Servicios de Dominio** (en este caso, `App\Services\Tenant\TenantConfigService`) que, en lugar de fragmentar la lógica en múltiples clases micro-orquestadoras dispersas, concentran la gobernanza del ciclo de vida del inquilino a través de **métodos especializados en orquestación**, apoyándose internamente en **métodos auxiliares atómicos y fuertemente tipados**:
+
+#### Estructura y Flujos del Servicio Orquestador:
+* **Método Orquestador 1: `orchestrateCatalogSchemaUpdate(Tenant $tenant, array $payload): TenantConfig`**
+  - *Responsabilidad:* Coordina de forma transaccional la actualización de atributos dinámicos y filtros del catálogo.
+  - *Métodos Auxiliares:*
+    1. `validateReservedKeywords(array $metadataSchema): void` $\rightarrow$ Valida que no se utilicen nombres del sistema (`id`, `sku`, etc.).
+    2. `validateAttributeDataTypes(array $metadataSchema): void` $\rightarrow$ Valida tipos de datos permitidos y obligatoriedad de `options` en selects.
+    3. `purgeOrphanFilters(array $metadataSchema, array $filterConfig): array` $\rightarrow$ Sanea filtros descartando aquellos que apunten a claves eliminadas.
+    4. `persistCatalogSchema(Tenant $tenant, array $metadataSchema, array $filterConfig): TenantConfig` $\rightarrow$ Persiste mediante el repositorio bajo `DB::transaction()`.
+    5. `invalidateStorefrontCache(Tenant $tenant): void` $\rightarrow$ Purga la clave de Redis `tenant:{tenant_id}:storefront_config`.
+
+* **Método Orquestador 2: `orchestrateBrandingUpdate(Tenant $tenant, array $payload): TenantConfig`**
+  - *Responsabilidad:* Coordina la actualización de la identidad corporativa y canales sociales.
+  - *Métodos Auxiliares:*
+    1. `sanitizeBrandingPayload(array $payload): array` $\rightarrow$ Normaliza colores hex a mayúsculas y limpia cadenas.
+    2. `persistBranding(Tenant $tenant, array $brandingData): TenantConfig` $\rightarrow$ Persiste vía repositorio.
+    3. `invalidateStorefrontCache(Tenant $tenant): void` $\rightarrow$ Purga la caché de Redis.
+
+* **Método Orquestador 3: `orchestrateShippingZonesUpdate(Tenant $tenant, array $payload): TenantConfig`**
+  - *Responsabilidad:* Coordina la matriz logística de envíos y tarifas.
+  - *Métodos Auxiliares:*
+    1. `validateShippingZones(array $zones): void` $\rightarrow$ Valida unicidad de códigos de zona y montos $\ge 0$.
+    2. `persistShippingZones(Tenant $tenant, array $zones): TenantConfig` $\rightarrow$ Persiste vía repositorio.
+    3. `invalidateStorefrontCache(Tenant $tenant): void` $\rightarrow$ Purga la caché de Redis.
+
+* **Método Orquestador 4: `getStorefrontBootstrap(Tenant $tenant): array`**
+  - *Responsabilidad:* Entrega eficiente de la configuración pública bajo el patrón Cache-Aside con SLA $\le 15\text{ ms}$.
+  - *Métodos Auxiliares:*
+    1. `resolveFromRedisCache(Tenant $tenant): ?array` $\rightarrow$ Intenta recuperar la clave de Redis.
+    2. `buildStorefrontPayload(Tenant $tenant, TenantConfig $config): array` $\rightarrow$ Filtra y formatea solo los campos públicos.
+    3. `storeInRedisCache(Tenant $tenant, array $payload): void` $\rightarrow$ Almacena en Redis con TTL de 3600 segundos ante cache miss.
 
 ### 4.4. Capa de Persistencia (Repository Pattern)
 * **Contrato:** `App\Repositories\Contracts\TenantConfigRepositoryInterface`
@@ -390,16 +418,15 @@ En apego a la metodología **Test-First**, la implementación solo podrá dar in
 
 ### 7.2. Suite de Pruebas Unitarias (Unit Tests)
 
-1. **`tests/Unit/Services/CatalogSchemaValidatorServiceTest.php`:**
-   - Valida que el validador apruebe esquemas con estructura correcta.
-   - Valida que detecte todas las palabras reservadas de la lista negra.
-   - Valida que exija `options` válidas únicamente en tipos `select` y `multiselect`.
-2. **`tests/Unit/Services/TenantConfigCacheServiceTest.php`:**
-   - Verifica la conformación correcta de la clave: `tenant:{tenant_id}:storefront_config`.
-   - Verifica el comportamiento de lectura con hit y miss.
-   - Verifica la ejecución de `Cache::forget` ante llamadas a `invalidate()`.
-3. **`tests/Unit/Orchestrators/OrphanFilterPurgerTest.php`:**
-   - Comprueba de forma aislada que un arreglo de filtros con claves mixtas (válidas y huérfanas) sea saneado reteniendo únicamente las declaradas en el `metadata_schema` activo.
+1. **`tests/Unit/Services/TenantConfigServiceOrchestratorTest.php`:**
+   - Comprueba de forma aislada que el método auxiliar `validateReservedKeywords()` detecte y rechace la lista negra de nombres del sistema (`id`, `sku`, `price`, `stock`, etc.).
+   - Comprueba de forma aislada que `purgeOrphanFilters()` sanee un arreglo de filtros mixtos descartando aquellos que apunten a atributos no existentes en `metadata_schema`.
+   - Comprueba que `sanitizeBrandingPayload()` normalice colores en mayúsculas y preserve URLs válidas.
+   - Comprueba que `validateShippingZones()` rechace arreglos con tarifas negativas o campos faltantes.
+2. **`tests/Unit/Services/TenantConfigCacheOperationsTest.php`:**
+   - Verifica la construcción de la clave Redis `tenant:{tenant_id}:storefront_config`.
+   - Verifica el almacenamiento y retorno de datos bajo el patrón Cache-Aside.
+   - Verifica la purga explícita de caché (`Cache::forget`) ante llamadas de invalidación.
 
 ---
 
@@ -410,7 +437,7 @@ En apego a la metodología **Test-First**, la implementación solo podrá dar in
 3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `UpdateCatalogSchemaRequest`, `UpdateBrandingConfigRequest`, `UpdateShippingZonesRequest`.
    - Controladores: `StorefrontConfigController` y `AdminTenantConfigController`.
-   - Servicios y Orquestador: `TenantConfigCacheService`, `CatalogSchemaValidatorService`, `UpdateCatalogSchemaOrchestrator`.
+   - Servicio de Dominio Orquestador: `TenantConfigService` con sus métodos orquestadores maestros y métodos auxiliares atómicos.
    - Repositorio: `TenantConfigRepositoryInterface` y `EloquentTenantConfigRepository`.
 4. [ ] La vitrina pública (`GET /api/v1/storefront/config`) responde en $\le 15\text{ ms}$ gracias a la caché de Redis.
 5. [ ] Cualquier mutación administrativa en branding, catálogo o envíos purga automáticamente la clave de vitrina en Redis.
