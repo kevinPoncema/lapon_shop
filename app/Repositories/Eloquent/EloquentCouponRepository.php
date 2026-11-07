@@ -26,6 +26,27 @@ class EloquentCouponRepository implements CouponRepositoryInterface
             ->first();
     }
 
+    public function findByCodeWithLock(string $code): ?Coupon
+    {
+        return Coupon::query()
+            ->with(['promotion', 'affiliate'])
+            ->whereRaw('UPPER(code) = ?', [strtoupper(trim($code))])
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function incrementUsage(Coupon $coupon): void
+    {
+        $coupon->increment('used_count');
+    }
+
+    public function decrementUsage(Coupon $coupon): void
+    {
+        if ($coupon->used_count > 0) {
+            $coupon->decrement('used_count');
+        }
+    }
+
     public function existsByCode(string $code, ?string $ignoreId = null): bool
     {
         return Coupon::query()

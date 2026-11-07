@@ -48,6 +48,34 @@ class EloquentProductVariantRepository implements ProductVariantRepositoryInterf
             ->get();
     }
 
+    /**
+     * @param  list<string>  $variantIds
+     * @return Collection<int, ProductVariant>
+     */
+    public function findManyWithLock(array $variantIds): Collection
+    {
+        if (empty($variantIds)) {
+            return new Collection;
+        }
+
+        return ProductVariant::query()
+            ->with('product')
+            ->whereIn('id', $variantIds)
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    public function decrementStock(ProductVariant $variant, int $quantity): void
+    {
+        $variant->decrement('stock', $quantity);
+    }
+
+    public function incrementStock(ProductVariant $variant, int $quantity): void
+    {
+        $variant->increment('stock', $quantity);
+    }
+
     public function existsBySku(string $sku, ?string $ignoreVariantId = null): bool
     {
         return ProductVariant::query()

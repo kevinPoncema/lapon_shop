@@ -18,6 +18,16 @@ interface ProductVariantRepositoryInterface
      */
     public function findManyActiveWithProduct(array $variantIds): Collection;
 
+    /**
+     * @param  list<string>  $variantIds
+     * @return Collection<int, ProductVariant>
+     */
+    public function findManyWithLock(array $variantIds): Collection;
+
+    public function decrementStock(ProductVariant $variant, int $quantity): void;
+
+    public function incrementStock(ProductVariant $variant, int $quantity): void;
+
     public function existsBySku(string $sku, ?string $ignoreVariantId = null): bool;
 
     /**

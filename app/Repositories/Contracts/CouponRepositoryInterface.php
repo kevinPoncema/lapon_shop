@@ -11,6 +11,12 @@ interface CouponRepositoryInterface
 
     public function findByCodeWithPromotion(string $code): ?Coupon;
 
+    public function findByCodeWithLock(string $code): ?Coupon;
+
+    public function incrementUsage(Coupon $coupon): void;
+
+    public function decrementUsage(Coupon $coupon): void;
+
     public function existsByCode(string $code, ?string $ignoreId = null): bool;
 
     /**

@@ -4,14 +4,22 @@ namespace App\Providers;
 
 use App\Repositories\Contracts\AffiliateRepositoryInterface;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
+use App\Repositories\Contracts\CommissionRepositoryInterface;
 use App\Repositories\Contracts\CouponRepositoryInterface;
+use App\Repositories\Contracts\OrderItemRepositoryInterface;
+use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Repositories\Contracts\OutboundRewardRepositoryInterface;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Contracts\ProductVariantRepositoryInterface;
 use App\Repositories\Contracts\PromotionRepositoryInterface;
 use App\Repositories\Contracts\TenantConfigRepositoryInterface;
 use App\Repositories\Eloquent\EloquentAffiliateRepository;
 use App\Repositories\Eloquent\EloquentCategoryRepository;
+use App\Repositories\Eloquent\EloquentCommissionRepository;
 use App\Repositories\Eloquent\EloquentCouponRepository;
+use App\Repositories\Eloquent\EloquentOrderItemRepository;
+use App\Repositories\Eloquent\EloquentOrderRepository;
+use App\Repositories\Eloquent\EloquentOutboundRewardRepository;
 use App\Repositories\Eloquent\EloquentProductRepository;
 use App\Repositories\Eloquent\EloquentProductVariantRepository;
 use App\Repositories\Eloquent\EloquentPromotionRepository;
@@ -33,6 +41,10 @@ class RepositoryServiceProvider extends ServiceProvider
         PromotionRepositoryInterface::class => EloquentPromotionRepository::class,
         CouponRepositoryInterface::class => EloquentCouponRepository::class,
         AffiliateRepositoryInterface::class => EloquentAffiliateRepository::class,
+        OrderRepositoryInterface::class => EloquentOrderRepository::class,
+        OrderItemRepositoryInterface::class => EloquentOrderItemRepository::class,
+        CommissionRepositoryInterface::class => EloquentCommissionRepository::class,
+        OutboundRewardRepositoryInterface::class => EloquentOutboundRewardRepository::class,
     ];
 
     /**
@@ -67,6 +79,22 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             AffiliateRepositoryInterface::class,
             EloquentAffiliateRepository::class
+        );
+        $this->app->bind(
+            OrderRepositoryInterface::class,
+            EloquentOrderRepository::class
+        );
+        $this->app->bind(
+            OrderItemRepositoryInterface::class,
+            EloquentOrderItemRepository::class
+        );
+        $this->app->bind(
+            CommissionRepositoryInterface::class,
+            EloquentCommissionRepository::class
+        );
+        $this->app->bind(
+            OutboundRewardRepositoryInterface::class,
+            EloquentOutboundRewardRepository::class
         );
     }
 
