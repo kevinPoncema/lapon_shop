@@ -7,6 +7,7 @@ use App\Models\PartnerStore;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsurePartnerMembership
@@ -20,9 +21,9 @@ class EnsurePartnerMembership
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $partner = $request->user();
+        $partner = Auth::guard('sanctum')->user();
 
-        if (! $partner || ! ($partner instanceof PartnerStore)) {
+        if (! ($partner instanceof PartnerStore)) {
             return new JsonResponse([
                 'error' => [
                     'code' => 'UNAUTHENTICATED',
@@ -51,15 +52,13 @@ class EnsurePartnerMembership
             ], Response::HTTP_FORBIDDEN);
         }
 
-        if (method_exists($partner, 'currentAccessToken') && $partner->currentAccessToken() && method_exists($partner, 'tokenCan')) {
-            if (! $partner->tokenCan('partner-portal') && ! $partner->tokenCan('*')) {
-                return new JsonResponse([
-                    'error' => [
-                        'code' => 'FORBIDDEN_SCOPE',
-                        'message' => 'El token no posee el alcance requerido (partner-portal).',
-                    ],
-                ], Response::HTTP_FORBIDDEN);
-            }
+        if (! $partner->tokenCan('partner-portal') && ! $partner->tokenCan('*')) {
+            return new JsonResponse([
+                'error' => [
+                    'code' => 'FORBIDDEN_SCOPE',
+                    'message' => 'El token no posee el alcance requerido (partner-portal).',
+                ],
+            ], Response::HTTP_FORBIDDEN);
         }
 
         return $next($request);

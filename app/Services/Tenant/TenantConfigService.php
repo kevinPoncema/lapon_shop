@@ -4,6 +4,7 @@ namespace App\Services\Tenant;
 
 use App\Models\Tenant;
 use App\Models\TenantConfig;
+use App\Repositories\Contracts\PartnerStoreRepositoryInterface;
 use App\Repositories\Contracts\TenantConfigRepositoryInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -58,8 +59,55 @@ class TenantConfigService
     ];
 
     public function __construct(
-        protected TenantConfigRepositoryInterface $repository
+        protected TenantConfigRepositoryInterface $repository,
+        protected ?PartnerStoreRepositoryInterface $partnerStoreRepository = null
     ) {}
+
+    /**
+     * Orchestrator: Coordinate contact info update and invalidate storefront cache.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function orchestrateContactInfoUpdate(Tenant $tenant, array $payload): TenantConfig
+    {
+        $updatedConfig = $this->repository->updateContactInfo($tenant->id, $payload);
+        $this->invalidateStorefrontCache($tenant);
+
+        return $updatedConfig;
+    }
+
+    /**
+     * Orchestrator: Coordinate outbound reward rules update, validating partner store eligibility.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function orchestrateOutboundRewardRulesUpdate(Tenant $tenant, array $payload): TenantConfig
+    {
+        $isEnabled = (bool) ($payload['is_enabled'] ?? false);
+
+        if ($isEnabled) {
+            $partnerStoreId = $payload['partner_store_id'] ?? null;
+            if (! $partnerStoreId) {
+                throw ValidationException::withMessages([
+                    'partner_store_id' => 'El comercio aliado es obligatorio cuando las recompensas están habilitadas.',
+                ]);
+            }
+
+            $repo = $this->partnerStoreRepository ?? app(PartnerStoreRepositoryInterface::class);
+            $partner = $repo->findActiveById((string) $partnerStoreId);
+
+            if (! $partner || $partner->tenant_id !== $tenant->id) {
+                throw ValidationException::withMessages([
+                    'partner_store_id' => 'El comercio aliado seleccionado no existe, está inactivo o no pertenece a esta tienda.',
+                ]);
+            }
+        }
+
+        $updatedConfig = $this->repository->updateOutboundRewardRules($tenant->id, $payload);
+        $this->invalidateStorefrontCache($tenant);
+
+        return $updatedConfig;
+    }
 
     /**
      * Retrieve complete admin configuration for the authenticated tenant.
