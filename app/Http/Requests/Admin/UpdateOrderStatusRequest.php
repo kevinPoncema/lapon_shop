@@ -19,6 +19,7 @@ class UpdateOrderStatusRequest extends FormRequest
         return [
             'status' => ['required', 'string', 'in:COMPLETADA,CANCELADA'],
             'payment_notes' => ['nullable', 'string', 'max:500'],
+            'cancellation_reason' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

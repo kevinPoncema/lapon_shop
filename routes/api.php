@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Admin\AdminAffiliateController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
+use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
 use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
@@ -102,6 +103,12 @@ Route::prefix('v1')
 
                 Route::post('/affiliates', [AdminAffiliateController::class, 'store'])
                     ->name('api.v1.admin.affiliates.store');
+
+                Route::get('/affiliates/{affiliate_id}/commissions', [AdminCommissionController::class, 'index'])
+                    ->name('api.v1.admin.affiliates.commissions.index');
+
+                Route::post('/affiliates/{affiliate_id}/commissions/settle', [AdminCommissionController::class, 'settle'])
+                    ->name('api.v1.admin.affiliates.commissions.settle');
 
                 Route::get('/orders', [AdminOrderController::class, 'index'])
                     ->name('api.v1.admin.orders.index');
