@@ -10,6 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -32,6 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.member' => EnsureTenantMembership::class,
             'partner.member' => EnsurePartnerMembership::class,
         ]);
+
+        $middleware->prependToPriorityList(
+            ThrottleRequests::class,
+            ResolveTenantContext::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

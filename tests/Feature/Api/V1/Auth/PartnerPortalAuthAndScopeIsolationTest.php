@@ -124,7 +124,15 @@ test('comercio aliado con is_active false recibe 403 al iniciar sesion o al usar
 
     $this->partnerA->update(['is_active' => false]);
 
-    // 1. Login bloqueado
+    // 1. Token previo bloqueado por middleware al estar inactivo
+    $responseAccess = $this->withHeaders([
+        'X-Tenant-Slug' => 'comercio-alpha',
+        'Authorization' => 'Bearer '.$tokenResult->plainTextToken,
+    ])->getJson('/api/v1/partner-portal/auth/me');
+
+    $responseAccess->assertStatus(403);
+
+    // 2. Login bloqueado por orquestador y purga remanente
     $responseLogin = $this->withHeader('X-Tenant-Slug', 'comercio-alpha')
         ->postJson('/api/v1/partner-portal/auth/login', [
             'email' => 'caja@delicia.hn',
@@ -133,14 +141,6 @@ test('comercio aliado con is_active false recibe 403 al iniciar sesion o al usar
 
     $responseLogin->assertStatus(403)
         ->assertJsonPath('error.code', 'ACCOUNT_SUSPENDED');
-
-    // 2. Token previo bloqueado
-    $responseAccess = $this->withHeaders([
-        'X-Tenant-Slug' => 'comercio-alpha',
-        'Authorization' => 'Bearer '.$tokenResult->plainTextToken,
-    ])->getJson('/api/v1/partner-portal/auth/me');
-
-    $responseAccess->assertStatus(403);
 });
 
 test('token de PartnerStore del Tenant A es rechazado con 403 al enviarse con X-Tenant-Slug del Tenant B', function () {

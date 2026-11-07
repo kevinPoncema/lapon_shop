@@ -22,7 +22,7 @@ class TenantAuthenticationService
     /**
      * Dummy bcrypt hash to prevent timing attacks when an account does not exist.
      */
-    protected const DUMMY_HASH = '$2y$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012';
+    protected const DUMMY_HASH = '$2y$12$D41PqICaeCQzo/t40OV8aupAirPOZLThtErgEQk38q760B3cBDSmK';
 
     public function __construct(
         protected TenantContext $tenantContext,

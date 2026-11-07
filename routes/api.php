@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AdminAffiliateController;
+use App\Http\Controllers\Api\V1\Admin\AdminAuthController;
 use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
 use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\V1\Admin\AdminTenantConfigController;
 use App\Http\Controllers\Api\V1\Admin\AdminVariantController;
+use App\Http\Controllers\Api\V1\PartnerPortal\PartnerPortalAuthController;
 use App\Http\Controllers\Api\V1\PartnerPortal\PartnerVoucherController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCartQuoteController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCategoryController;
@@ -45,10 +47,29 @@ Route::prefix('v1')
         Route::post('/storefront/checkout', StorefrontCheckoutController::class)
             ->name('api.v1.storefront.checkout');
 
+        // Autenticación Administrativa (Pública con tenant.context y throttle)
+        Route::post('/admin/auth/login', [AdminAuthController::class, 'login'])
+            ->middleware('throttle:tenant-auth')
+            ->name('api.v1.admin.auth.login');
+
+        // Autenticación Portal Aliado (Pública con tenant.context y throttle)
+        Route::post('/partner-portal/auth/login', [PartnerPortalAuthController::class, 'login'])
+            ->middleware('throttle:tenant-auth')
+            ->name('api.v1.partner_portal.auth.login');
+
         // Panel Administrativo (Admin)
         Route::prefix('admin')
             ->middleware(['auth:sanctum', 'tenant.member'])
             ->group(function () {
+                Route::get('/auth/me', [AdminAuthController::class, 'me'])
+                    ->name('api.v1.admin.auth.me');
+
+                Route::post('/auth/logout', [AdminAuthController::class, 'logout'])
+                    ->name('api.v1.admin.auth.logout');
+
+                Route::post('/auth/logout-all', [AdminAuthController::class, 'logoutAll'])
+                    ->name('api.v1.admin.auth.logout_all');
+
                 Route::get('/config', [AdminTenantConfigController::class, 'show'])
                     ->name('api.v1.admin.config.show');
 
@@ -141,6 +162,12 @@ Route::prefix('v1')
         Route::prefix('partner-portal')
             ->middleware(['auth:sanctum', 'partner.member'])
             ->group(function () {
+                Route::get('/auth/me', [PartnerPortalAuthController::class, 'me'])
+                    ->name('api.v1.partner_portal.auth.me');
+
+                Route::post('/auth/logout', [PartnerPortalAuthController::class, 'logout'])
+                    ->name('api.v1.partner_portal.auth.logout');
+
                 Route::get('/vouchers/{code}', [PartnerVoucherController::class, 'show'])
                     ->name('api.v1.partner_portal.vouchers.show');
 
