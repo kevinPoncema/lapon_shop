@@ -1,4 +1,11 @@
-import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import {
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    RotateCcw,
+    SlidersHorizontal,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type CategoryNode, type StorefrontFilterItem } from '@/types/commerce';
@@ -18,6 +25,7 @@ interface FacetedFilterSidebarProps {
     onChange: (next: ActiveCatalogFilters) => void;
     onReset: () => void;
     currencyCode: string;
+    facetPageSize?: number;
 }
 
 export function FacetedFilterSidebar({
@@ -27,6 +35,7 @@ export function FacetedFilterSidebar({
     onChange,
     onReset,
     currencyCode,
+    facetPageSize = 6,
 }: FacetedFilterSidebarProps) {
     const sortedFilters = [...filters].sort((a, b) => a.order - b.order);
     const hasPriceFilter = sortedFilters.some(
@@ -35,6 +44,24 @@ export function FacetedFilterSidebar({
     const metadataFilters = sortedFilters.filter(
         (f): f is Extract<StorefrontFilterItem, { type: 'metadata' }> =>
             f.type === 'metadata',
+    );
+
+    const effectivePageSize = Math.max(1, facetPageSize);
+    const [facetPage, setFacetPage] = useState<number>(1);
+    const totalFacetPages = Math.max(
+        1,
+        Math.ceil(metadataFilters.length / effectivePageSize),
+    );
+
+    useEffect(() => {
+        if (facetPage > totalFacetPages) {
+            setFacetPage(totalFacetPages);
+        }
+    }, [metadataFilters.length, facetPage, totalFacetPages]);
+
+    const visibleMetadataFilters = metadataFilters.slice(
+        (facetPage - 1) * effectivePageSize,
+        facetPage * effectivePageSize,
     );
 
     const activeCount =
@@ -266,8 +293,8 @@ export function FacetedFilterSidebar({
                 </div>
             )}
 
-            {/* Facetas Schema-Driven Dinámicas (metadata_schema + filter_config) */}
-            {metadataFilters.map((facet) => {
+            {/* Facetas Schema-Driven Dinámicas (metadata_schema + filter_config paginadas de a 4) */}
+            {visibleMetadataFilters.map((facet) => {
                 const currentVal = value.attr[facet.key];
 
                 return (
@@ -383,6 +410,52 @@ export function FacetedFilterSidebar({
                     </div>
                 );
             })}
+
+            {/* Paginación dinámica en frontend para filtros (solo aparece al exceder 4 filtros) */}
+            {metadataFilters.length > effectivePageSize && (
+                <div className="flex items-center justify-between border-t border-zinc-800/80 pt-3 text-xs">
+                    <span className="font-mono text-[10px] text-zinc-500">
+                        {(facetPage - 1) * effectivePageSize + 1}–
+                        {Math.min(
+                            facetPage * effectivePageSize,
+                            metadataFilters.length,
+                        )}{' '}
+                        de {metadataFilters.length}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            disabled={facetPage <= 1}
+                            onClick={() =>
+                                setFacetPage((p) => Math.max(1, p - 1))
+                            }
+                            className="size-7 border-zinc-800 bg-[#121215] text-zinc-300 hover:bg-zinc-900 disabled:opacity-30"
+                            title="Filtros anteriores"
+                        >
+                            <ChevronLeft className="size-3.5" />
+                            <span className="sr-only">Anterior</span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            disabled={facetPage >= totalFacetPages}
+                            onClick={() =>
+                                setFacetPage((p) =>
+                                    Math.min(totalFacetPages, p + 1),
+                                )
+                            }
+                            className="size-7 border-zinc-800 bg-[#121215] text-zinc-300 hover:bg-zinc-900 disabled:opacity-30"
+                            title="Siguientes filtros"
+                        >
+                            <ChevronRight className="size-3.5" />
+                            <span className="sr-only">Siguiente</span>
+                        </Button>
+                    </div>
+                </div>
+            )}
         </aside>
     );
 }

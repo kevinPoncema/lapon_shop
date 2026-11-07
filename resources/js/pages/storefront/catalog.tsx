@@ -46,7 +46,7 @@ const INITIAL_FILTERS: ActiveCatalogFilters = {
     categorySlug: '',
     priceMin: '',
     priceMax: '',
-    inStock: false,
+    inStock: true,
     attr: {},
 };
 
@@ -221,6 +221,7 @@ function CatalogContent() {
     const [debouncedQuery, setDebouncedQuery] = useState<string>('');
     const [sort, setSort] = useState<StorefrontProductSort>('newest');
     const [page, setPage] = useState<number>(1);
+    const [perPage, setPerPage] = useState<number>(6);
     const [filters, setFilters] =
         useState<ActiveCatalogFilters>(INITIAL_FILTERS);
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(false);
@@ -245,7 +246,7 @@ function CatalogContent() {
 
         const query: StorefrontProductQuery = {
             page,
-            per_page: 12,
+            per_page: perPage,
             sort,
         };
 
@@ -294,7 +295,7 @@ function CatalogContent() {
         })();
 
         return () => controller.abort();
-    }, [tenantSlug, debouncedQuery, sort, page, filters]);
+    }, [tenantSlug, debouncedQuery, sort, page, perPage, filters]);
 
     const handleFilterChange = (next: ActiveCatalogFilters) => {
         setFilters(next);
@@ -409,17 +410,25 @@ function CatalogContent() {
                         onChange={handleFilterChange}
                         onReset={handleResetFilters}
                         currencyCode={currencyCode}
+                        facetPageSize={6}
                     />
                 </div>
 
                 <div>
-                    <div className="mb-4 flex items-center justify-between text-xs text-zinc-400">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
                         <span>
                             {meta ? (
                                 <>
                                     Mostrando{' '}
                                     <strong className="font-mono text-zinc-200">
-                                        {products.length}
+                                        {(meta.current_page - 1) * meta.per_page + 1}
+                                    </strong>{' '}
+                                    a{' '}
+                                    <strong className="font-mono text-zinc-200">
+                                        {Math.min(
+                                            meta.current_page * meta.per_page,
+                                            meta.total,
+                                        )}
                                     </strong>{' '}
                                     de{' '}
                                     <strong className="font-mono text-zinc-200">
@@ -431,6 +440,24 @@ function CatalogContent() {
                                 'Cargando catálogo...'
                             )}
                         </span>
+
+                        {meta && meta.total > 0 && (
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-zinc-500">Por página:</span>
+                                <select
+                                    value={perPage}
+                                    onChange={(e) => {
+                                        setPerPage(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                    className="h-7 rounded border border-zinc-800 bg-[#121215] px-2 font-mono text-xs text-zinc-200 focus:border-primary focus:outline-none"
+                                >
+                                    <option value={6}>6</option>
+                                    <option value={12}>12</option>
+                                    <option value={24}>24</option>
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     {error && (
@@ -488,43 +515,53 @@ function CatalogContent() {
                             </div>
 
                             {meta && meta.last_page > 1 && (
-                                <div className="mt-8 flex items-center justify-between border-t border-zinc-800 pt-5">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={meta.current_page <= 1}
-                                        onClick={() =>
-                                            setPage((p) => Math.max(1, p - 1))
-                                        }
-                                        className="border-zinc-800 bg-[#121215] text-xs text-zinc-200"
-                                    >
-                                        <ChevronLeft className="mr-1 size-3.5" />
-                                        Anterior
-                                    </Button>
-
-                                    <span className="font-mono text-xs text-zinc-400">
-                                        Página {meta.current_page} de{' '}
-                                        {meta.last_page}
+                                <div className="mt-8 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#121215] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <span className="text-xs text-zinc-400">
+                                        Página{' '}
+                                        <strong className="font-mono text-zinc-200">
+                                            {meta.current_page}
+                                        </strong>{' '}
+                                        de{' '}
+                                        <strong className="font-mono text-zinc-200">
+                                            {meta.last_page}
+                                        </strong>
                                     </span>
 
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={
-                                            meta.current_page >= meta.last_page
-                                        }
-                                        onClick={() =>
-                                            setPage((p) =>
-                                                Math.min(meta.last_page, p + 1),
-                                            )
-                                        }
-                                        className="border-zinc-800 bg-[#121215] text-xs text-zinc-200"
-                                    >
-                                        Siguiente
-                                        <ChevronRight className="ml-1 size-3.5" />
-                                    </Button>
+                                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={meta.current_page <= 1}
+                                            onClick={() =>
+                                                setPage((p) => Math.max(1, p - 1))
+                                            }
+                                            className="size-8 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                            title="Página anterior"
+                                        >
+                                            <ChevronLeft className="size-4" />
+                                            <span className="sr-only">Anterior</span>
+                                        </Button>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={
+                                                meta.current_page >= meta.last_page
+                                            }
+                                            onClick={() =>
+                                                setPage((p) =>
+                                                    Math.min(meta.last_page, p + 1),
+                                                )
+                                            }
+                                            className="size-8 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                            title="Página siguiente"
+                                        >
+                                            <ChevronRight className="size-4" />
+                                            <span className="sr-only">Siguiente</span>
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </>
@@ -550,6 +587,7 @@ function CatalogContent() {
                         onChange={handleFilterChange}
                         onReset={handleResetFilters}
                         currencyCode={currencyCode}
+                        facetPageSize={6}
                     />
                 </SheetContent>
             </Sheet>

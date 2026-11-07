@@ -415,3 +415,54 @@ test('administrador del Tenant A no puede actualizar el catalogo schema del Tena
     $configBAfter = TenantConfig::where('tenant_id', $tenantB->id)->first();
     expect($configBAfter->metadata_schema[0]['key'])->toBe('color');
 });
+
+test('genera automaticamente llave snake_case si el cliente no la envia o la envia vacia', function () {
+    $tenant = Tenant::factory()->create([
+        'slug' => 'tienda-auto-key',
+        'is_active' => true,
+    ]);
+
+    $admin = User::factory()->create([
+        'tenant_id' => $tenant->id,
+        'role' => 'OWNER',
+        'is_active' => true,
+    ]);
+
+    TenantConfig::create([
+        'tenant_id' => $tenant->id,
+        'metadata_schema' => [],
+        'filter_config' => [],
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    $payload = [
+        'metadata_schema' => [
+            [
+                'label' => 'Membrana Impermeable DWR',
+                'data_type' => 'boolean',
+                'is_required' => false,
+                'affects_stock' => false,
+            ],
+            [
+                'label' => 'Talla Calzado (US)',
+                'data_type' => 'select',
+                'options' => ['8', '9', '10'],
+                'is_required' => true,
+                'affects_stock' => true,
+            ],
+        ],
+        'filter_config' => [],
+    ];
+
+    $response = $this->withHeader('X-Tenant-Slug', 'tienda-auto-key')
+        ->putJson('/api/v1/admin/config/catalog-schema', $payload);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'metadata_schema' => [
+                ['key' => 'membrana_impermeable_dwr'],
+                ['key' => 'talla_calzado_us'],
+            ],
+        ]);
+});

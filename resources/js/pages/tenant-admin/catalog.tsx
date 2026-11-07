@@ -1,13 +1,18 @@
 import { Head } from '@inertiajs/react';
 import {
+    ChevronLeft,
+    ChevronRight,
     Edit3,
     FolderPlus,
     Loader2,
     Minus,
     Package,
     Plus,
+    RotateCcw,
     Search,
+    SlidersHorizontal,
     Trash2,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,6 +36,7 @@ import {
     type CreateProductVariantInput,
     type FormattedProductDetail,
     type MetadataAttributeDefinition,
+    type PaginationMeta,
     type PortalShellPageProps,
 } from '@/types/commerce';
 
@@ -49,10 +55,45 @@ function CatalogAdminContent() {
     const { tenantSlug, tenantName, currencyCode } = useTenant();
 
     const [products, setProducts] = useState<FormattedProductDetail[]>([]);
+    const [meta, setMeta] = useState<PaginationMeta | null>(null);
     const [categories, setCategories] = useState<CategoryNode[]>([]);
     const [schema, setSchema] = useState<MetadataAttributeDefinition[]>([]);
-    const [searchDraft, setSearchDraft] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Paginación y Filtros (UI compacta y optimizada)
+    const [page, setPage] = useState<number>(1);
+    const [perPage, setPerPage] = useState<number>(10);
+    const [searchDraft, setSearchDraft] = useState<string>('');
+    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [selectedStatus, setSelectedStatus] = useState<string>(''); // '' | 'active' | 'inactive'
+    const [selectedStock, setSelectedStock] = useState<string>(''); // '' | 'in_stock' | 'out_of_stock'
+    const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>({});
+    const [showAttrFilters, setShowAttrFilters] = useState<boolean>(false);
+    const [attrPage, setAttrPage] = useState<number>(1);
+
+    // Paginación de atributos dinámicos (4 por vista con controles < >)
+    const ATTR_PAGE_SIZE = 4;
+    const totalAttrPages = Math.max(1, Math.ceil(schema.length / ATTR_PAGE_SIZE));
+    const visibleAttrs = schema.slice(
+        (attrPage - 1) * ATTR_PAGE_SIZE,
+        attrPage * ATTR_PAGE_SIZE,
+    );
+
+    useEffect(() => {
+        if (attrPage > totalAttrPages) {
+            setAttrPage(totalAttrPages);
+        }
+    }, [attrPage, totalAttrPages]);
+
+    // Debounce del buscador general
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedSearch(searchDraft.trim());
+            setPage(1);
+        }, 280);
+        return () => window.clearTimeout(timer);
+    }, [searchDraft]);
 
     // Nueva Categoría
     const [catModalOpen, setCatModalOpen] = useState<boolean>(false);
@@ -82,37 +123,109 @@ function CatalogAdminContent() {
     ]);
     const [isSavingProduct, setIsSavingProduct] = useState<boolean>(false);
 
-    const loadAll = useCallback(
-        async (q = '') => {
-            setIsLoading(true);
-            try {
-                const [prodRes, catRes, configRes] = await Promise.all([
-                    commerceApi.admin.getProducts(tenantSlug, {
-                        q: q || undefined,
-                        per_page: 30,
-                    }),
-                    commerceApi.admin.getCategories(tenantSlug),
-                    commerceApi.admin.getConfig(tenantSlug),
-                ]);
-                setProducts(prodRes.data);
-                setCategories(catRes.data);
-                setSchema(configRes.metadata_schema ?? []);
-            } catch (err) {
-                toast.error(
-                    err instanceof ApiClientError
-                        ? err.message
-                        : 'Error al cargar el catálogo administrativo.',
-                );
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        [tenantSlug],
-    );
+    // Cargar metadatos iniciales (Categorías y Esquema)
+    const loadMetadata = useCallback(async () => {
+        try {
+            const [catRes, configRes] = await Promise.all([
+                commerceApi.admin.getCategories(tenantSlug),
+                commerceApi.admin.getConfig(tenantSlug),
+            ]);
+            setCategories(catRes.data);
+            setSchema(configRes.metadata_schema ?? []);
+        } catch (err) {
+            toast.error(
+                err instanceof ApiClientError
+                    ? err.message
+                    : 'Error al cargar metadatos del catálogo.',
+            );
+        }
+    }, [tenantSlug]);
 
     useEffect(() => {
-        void loadAll();
-    }, [loadAll]);
+        void loadMetadata();
+    }, [loadMetadata]);
+
+    // Cargar listado de productos paginado con filtros
+    const fetchProducts = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const query: {
+                q?: string;
+                category_id?: string;
+                is_active?: boolean;
+                in_stock?: boolean;
+                attr?: Record<string, string>;
+                page?: number;
+                per_page?: number;
+            } = {
+                page,
+                per_page: perPage,
+            };
+
+            if (debouncedSearch) {
+                query.q = debouncedSearch;
+            }
+            if (selectedCategory) {
+                query.category_id = selectedCategory;
+            }
+            if (selectedStatus === 'active') {
+                query.is_active = true;
+            } else if (selectedStatus === 'inactive') {
+                query.is_active = false;
+            }
+            if (selectedStock === 'in_stock') {
+                query.in_stock = true;
+            } else if (selectedStock === 'out_of_stock') {
+                query.in_stock = false;
+            }
+            if (Object.keys(selectedAttrs).length > 0) {
+                query.attr = selectedAttrs;
+            }
+
+            const res = await commerceApi.admin.getProducts(tenantSlug, query);
+            setProducts(res.data);
+            setMeta(res.meta);
+        } catch (err) {
+            toast.error(
+                err instanceof ApiClientError
+                    ? err.message
+                    : 'Error al cargar los productos del catálogo.',
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, [
+        tenantSlug,
+        page,
+        perPage,
+        debouncedSearch,
+        selectedCategory,
+        selectedStatus,
+        selectedStock,
+        selectedAttrs,
+    ]);
+
+    useEffect(() => {
+        void fetchProducts();
+    }, [fetchProducts]);
+
+    const handleResetFilters = () => {
+        setSearchDraft('');
+        setDebouncedSearch('');
+        setSelectedCategory('');
+        setSelectedStatus('');
+        setSelectedStock('');
+        setSelectedAttrs({});
+        setPage(1);
+    };
+
+    const hasActiveFilters = Boolean(
+        debouncedSearch ||
+            selectedCategory ||
+            selectedStatus ||
+            selectedStock ||
+            Object.keys(selectedAttrs).length > 0,
+    );
 
     const flatCategories = categories.flatMap((root) => [
         { id: root.id, label: root.name },
@@ -174,7 +287,7 @@ function CatalogAdminContent() {
             setNewCatName('');
             setNewCatParentId('');
             setCatModalOpen(false);
-            await loadAll(searchDraft.trim());
+            await loadMetadata();
         } catch (err) {
             toast.error(
                 err instanceof ApiClientError
@@ -233,7 +346,7 @@ function CatalogAdminContent() {
                 toast.success('Producto creado exitosamente.');
             }
             setProductModalOpen(false);
-            await loadAll(searchDraft.trim());
+            await fetchProducts();
         } catch (err) {
             toast.error(
                 err instanceof ApiClientError
@@ -259,7 +372,7 @@ function CatalogAdminContent() {
             toast.success(
                 `Stock ${res.data.sku}: ${res.data.previous_stock} → ${res.data.current_stock}`,
             );
-            await loadAll(searchDraft.trim());
+            await fetchProducts();
         } catch (err) {
             toast.error(
                 err instanceof ApiClientError
@@ -282,7 +395,7 @@ function CatalogAdminContent() {
             toast.success(
                 nextActive ? 'Variante activada.' : 'Variante pausada.',
             );
-            await loadAll(searchDraft.trim());
+            await fetchProducts();
         } catch (err) {
             toast.error(
                 err instanceof ApiClientError
@@ -296,56 +409,404 @@ function CatalogAdminContent() {
         <div>
             <Head title={`Catálogo · ${tenantName}`} />
 
-            {/* Barra de herramientas */}
-            <div className="mb-6 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#121215] p-4 sm:flex-row sm:items-center sm:justify-between">
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        void loadAll(searchDraft.trim());
-                    }}
-                    className="flex flex-1 gap-2 sm:max-w-md"
-                >
-                    <div className="relative flex-1">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                            value={searchDraft}
-                            onChange={(e) => setSearchDraft(e.target.value)}
-                            placeholder="Buscar producto o SKU..."
-                            className="h-9 border-zinc-800 bg-zinc-950 pl-8 text-xs text-zinc-100"
-                        />
+            {/* Barra de herramientas y filtros compactos */}
+            <div className="mb-6 space-y-3 rounded-xl border border-zinc-800 bg-[#121215] p-4">
+                {/* Fila 1: Búsqueda y Botones de Acción */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setDebouncedSearch(searchDraft.trim());
+                            setPage(1);
+                        }}
+                        className="flex flex-1 gap-2 sm:max-w-md"
+                    >
+                        <div className="relative flex-1">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-zinc-500" />
+                            <Input
+                                value={searchDraft}
+                                onChange={(e) => setSearchDraft(e.target.value)}
+                                placeholder="Buscar producto o SKU..."
+                                className="h-9 border-zinc-800 bg-zinc-950 pl-8 text-xs text-zinc-100"
+                            />
+                        </div>
+                        {searchDraft && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setSearchDraft('');
+                                    setDebouncedSearch('');
+                                    setPage(1);
+                                }}
+                                className="h-9 px-2 text-zinc-400 hover:text-zinc-200"
+                                title="Limpiar búsqueda"
+                            >
+                                <X className="size-4" />
+                            </Button>
+                        )}
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            size="sm"
+                            className="h-9 border border-zinc-700 bg-zinc-800 text-xs text-zinc-100"
+                        >
+                            Buscar
+                        </Button>
+                    </form>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCatModalOpen(true)}
+                            className="h-9 border-zinc-700 bg-zinc-900 text-xs text-zinc-200"
+                        >
+                            <FolderPlus className="mr-1.5 size-3.5 text-indigo-400" />
+                            Nueva Categoría ({flatCategories.length})
+                        </Button>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={openCreateModal}
+                            className="h-9 bg-indigo-500 text-xs font-semibold text-white hover:bg-indigo-400"
+                        >
+                            <Plus className="mr-1.5 size-3.5" />
+                            Nuevo Producto
+                        </Button>
                     </div>
-                    <Button
-                        type="submit"
-                        variant="secondary"
-                        size="sm"
-                        className="h-9 border border-zinc-700 bg-zinc-800 text-xs text-zinc-100"
-                    >
-                        Buscar
-                    </Button>
-                </form>
-
-                <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCatModalOpen(true)}
-                        className="h-9 border-zinc-700 bg-zinc-900 text-xs text-zinc-200"
-                    >
-                        <FolderPlus className="mr-1.5 size-3.5 text-indigo-400" />
-                        Nueva Categoría ({flatCategories.length})
-                    </Button>
-
-                    <Button
-                        type="button"
-                        size="sm"
-                        onClick={openCreateModal}
-                        className="h-9 bg-indigo-500 text-xs font-semibold text-white hover:bg-indigo-400"
-                    >
-                        <Plus className="mr-1.5 size-3.5" />
-                        Nuevo Producto
-                    </Button>
                 </div>
+
+                {/* Fila 2: Filtros Compactos Rápidos */}
+                <div className="flex flex-wrap items-center gap-2 border-t border-zinc-800/80 pt-3">
+                    {/* Filtro Categoría */}
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => {
+                            setSelectedCategory(e.target.value);
+                            setPage(1);
+                        }}
+                        className="h-8 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                    >
+                        <option value="">Todas las categorías</option>
+                        {flatCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.label}
+                            </option>
+                        ))}
+                    </select>
+
+                    {/* Filtro Estado */}
+                    <select
+                        value={selectedStatus}
+                        onChange={(e) => {
+                            setSelectedStatus(e.target.value);
+                            setPage(1);
+                        }}
+                        className="h-8 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                    >
+                        <option value="">Todos los estados</option>
+                        <option value="active">Activos</option>
+                        <option value="inactive">Ocultos / Pausados</option>
+                    </select>
+
+                    {/* Filtro Stock */}
+                    <select
+                        value={selectedStock}
+                        onChange={(e) => {
+                            setSelectedStock(e.target.value);
+                            setPage(1);
+                        }}
+                        className="h-8 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none"
+                    >
+                        <option value="">Todo el inventario</option>
+                        <option value="in_stock">Con stock disponible</option>
+                        <option value="out_of_stock">Agotados</option>
+                    </select>
+
+                    {/* Toggle Atributos Dinámicos */}
+                    {schema.length > 0 && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAttrFilters((prev) => !prev)}
+                            className={`h-8 border-zinc-800 text-xs transition ${
+                                showAttrFilters ||
+                                Object.keys(selectedAttrs).length > 0
+                                    ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300'
+                                    : 'bg-zinc-950 text-zinc-300 hover:bg-zinc-900'
+                            }`}
+                        >
+                            <SlidersHorizontal className="mr-1.5 size-3.5" />
+                            Atributos ({schema.length})
+                            {Object.keys(selectedAttrs).length > 0 && (
+                                <span className="ml-1.5 rounded-full bg-indigo-500/30 px-1.5 py-0.2 font-mono text-[10px] text-indigo-200">
+                                    {Object.keys(selectedAttrs).length}
+                                </span>
+                            )}
+                        </Button>
+                    )}
+
+                    {/* Botón limpiar */}
+                    {hasActiveFilters && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="h-8 text-xs text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100"
+                        >
+                            <RotateCcw className="mr-1.5 size-3" />
+                            Limpiar
+                        </Button>
+                    )}
+                </div>
+
+                {/* Fila 3: Tira expandible para Atributos Dinámicos con paginación de 4 en 4 (< >) */}
+                {showAttrFilters && schema.length > 0 && (
+                    <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                Filtros por Atributos ({schema.length})
+                            </span>
+                            {totalAttrPages > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-mono text-zinc-500">
+                                        Pág. {attrPage} de {totalAttrPages}
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={attrPage <= 1}
+                                        onClick={() =>
+                                            setAttrPage((p) => Math.max(1, p - 1))
+                                        }
+                                        className="size-6 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                        title="Anterior"
+                                    >
+                                        <ChevronLeft className="size-3" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={attrPage >= totalAttrPages}
+                                        onClick={() =>
+                                            setAttrPage((p) =>
+                                                Math.min(totalAttrPages, p + 1),
+                                            )
+                                        }
+                                        className="size-6 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                        title="Siguiente"
+                                    >
+                                        <ChevronRight className="size-3" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {visibleAttrs.map((attrDef) => (
+                                <div
+                                    key={attrDef.key}
+                                    className="flex flex-col gap-1"
+                                >
+                                    <label className="truncate text-[11px] font-medium text-zinc-400">
+                                        {attrDef.label}
+                                    </label>
+                                    {attrDef.options &&
+                                    attrDef.options.length > 0 ? (
+                                        <select
+                                            value={
+                                                selectedAttrs[attrDef.key] ?? ''
+                                            }
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedAttrs((prev) => {
+                                                    const next = { ...prev };
+                                                    if (val) {
+                                                        next[attrDef.key] = val;
+                                                    } else {
+                                                        delete next[
+                                                            attrDef.key
+                                                        ];
+                                                    }
+                                                    return next;
+                                                });
+                                                setPage(1);
+                                            }}
+                                            className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="">Todos</option>
+                                            {attrDef.options.map((opt) => (
+                                                <option key={opt} value={opt}>
+                                                    {opt}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : attrDef.data_type === 'boolean' ? (
+                                        <select
+                                            value={
+                                                selectedAttrs[attrDef.key] ?? ''
+                                            }
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedAttrs((prev) => {
+                                                    const next = { ...prev };
+                                                    if (val) {
+                                                        next[attrDef.key] = val;
+                                                    } else {
+                                                        delete next[
+                                                            attrDef.key
+                                                        ];
+                                                    }
+                                                    return next;
+                                                });
+                                                setPage(1);
+                                            }}
+                                            className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 px-2 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="">Todos</option>
+                                            <option value="true">Sí</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                    ) : (
+                                        <Input
+                                            value={
+                                                selectedAttrs[attrDef.key] ?? ''
+                                            }
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSelectedAttrs((prev) => {
+                                                    const next = { ...prev };
+                                                    if (val.trim()) {
+                                                        next[attrDef.key] =
+                                                            val.trim();
+                                                    } else {
+                                                        delete next[
+                                                            attrDef.key
+                                                        ];
+                                                    }
+                                                    return next;
+                                                });
+                                                setPage(1);
+                                            }}
+                                            placeholder={`Filtrar ${attrDef.label.toLowerCase()}...`}
+                                            className="h-8 border-zinc-800 bg-zinc-900 text-xs text-zinc-200"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Fila 4: Chips de filtros activos */}
+                {hasActiveFilters && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[11px] text-zinc-500">
+                            Filtros activos:
+                        </span>
+                        {debouncedSearch && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300">
+                                Búsqueda: &quot;{debouncedSearch}&quot;
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchDraft('');
+                                        setDebouncedSearch('');
+                                        setPage(1);
+                                    }}
+                                    className="ml-0.5 text-zinc-500 hover:text-zinc-200"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            </span>
+                        )}
+                        {selectedCategory && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300">
+                                Cat:{' '}
+                                {flatCategories.find(
+                                    (c) => c.id === selectedCategory,
+                                )?.label ?? selectedCategory}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedCategory('');
+                                        setPage(1);
+                                    }}
+                                    className="ml-0.5 text-zinc-500 hover:text-zinc-200"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            </span>
+                        )}
+                        {selectedStatus && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300">
+                                Estado:{' '}
+                                {selectedStatus === 'active'
+                                    ? 'Activos'
+                                    : 'Ocultos'}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedStatus('');
+                                        setPage(1);
+                                    }}
+                                    className="ml-0.5 text-zinc-500 hover:text-zinc-200"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            </span>
+                        )}
+                        {selectedStock && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300">
+                                Stock:{' '}
+                                {selectedStock === 'in_stock'
+                                    ? 'Con stock'
+                                    : 'Agotados'}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedStock('');
+                                        setPage(1);
+                                    }}
+                                    className="ml-0.5 text-zinc-500 hover:text-zinc-200"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            </span>
+                        )}
+                        {Object.entries(selectedAttrs).map(([k, v]) => (
+                            <span
+                                key={k}
+                                className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300"
+                            >
+                                {schema.find((s) => s.key === k)?.label ?? k}:{' '}
+                                {v}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedAttrs((prev) => {
+                                            const next = { ...prev };
+                                            delete next[k];
+                                            return next;
+                                        });
+                                        setPage(1);
+                                    }}
+                                    className="ml-0.5 text-zinc-500 hover:text-zinc-200"
+                                >
+                                    <X className="size-3" />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Listado de Productos y Matriz de Stock por Variante */}
@@ -358,13 +819,27 @@ function CatalogAdminContent() {
                 <div className="rounded-xl border border-dashed border-zinc-800 bg-[#121215]/60 p-12 text-center">
                     <Package className="mx-auto size-10 text-zinc-600" />
                     <p className="mt-3 text-sm font-medium text-zinc-200">
-                        Sin productos registrados
+                        {hasActiveFilters
+                            ? 'No se encontraron productos con los filtros aplicados'
+                            : 'Sin productos registrados'}
                     </p>
                     <p className="mt-1 text-xs text-zinc-400">
-                        Crea tu primer producto adaptado automáticamente al{' '}
-                        <code className="font-mono">metadata_schema</code> de la
-                        tienda.
+                        {hasActiveFilters
+                            ? 'Intenta cambiar el término de búsqueda o restablecer los filtros.'
+                            : 'Crea tu primer producto adaptado automáticamente al metadata_schema de la tienda.'}
                     </p>
+                    {hasActiveFilters && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="mt-4 border-zinc-700 bg-zinc-900 text-xs text-zinc-200 hover:bg-zinc-800"
+                        >
+                            <RotateCcw className="mr-1.5 size-3.5" />
+                            Limpiar todos los filtros
+                        </Button>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -505,6 +980,94 @@ function CatalogAdminContent() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Paginación Inferior sin números (< >) */}
+            {meta && meta.total > 0 && (
+                <div className="mt-6 flex flex-col gap-3 rounded-xl border border-zinc-800 bg-[#121215] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <span>
+                            Mostrando{' '}
+                            <strong className="text-zinc-200">
+                                {(meta.current_page - 1) * meta.per_page + 1}
+                            </strong>{' '}
+                            a{' '}
+                            <strong className="text-zinc-200">
+                                {Math.min(
+                                    meta.current_page * meta.per_page,
+                                    meta.total,
+                                )}
+                            </strong>{' '}
+                            de{' '}
+                            <strong className="text-zinc-200">
+                                {meta.total}
+                            </strong>{' '}
+                            productos
+                        </span>
+                        <span className="text-zinc-700">|</span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-zinc-500">Por página:</span>
+                            <select
+                                value={perPage}
+                                onChange={(e) => {
+                                    setPerPage(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                                className="h-7 rounded border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <span className="text-xs text-zinc-400">
+                            Página{' '}
+                            <strong className="text-zinc-200">
+                                {meta.current_page}
+                            </strong>{' '}
+                            de{' '}
+                            <strong className="text-zinc-200">
+                                {meta.last_page}
+                            </strong>
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={meta.current_page <= 1 || isLoading}
+                                onClick={() =>
+                                    setPage((prev) => Math.max(1, prev - 1))
+                                }
+                                className="size-7 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                title="Página anterior"
+                            >
+                                <ChevronLeft className="size-4" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    meta.current_page >= meta.last_page ||
+                                    isLoading
+                                }
+                                onClick={() =>
+                                    setPage((prev) =>
+                                        Math.min(meta.last_page, prev + 1),
+                                    )
+                                }
+                                className="size-7 border-zinc-800 bg-zinc-900 p-0 text-zinc-300 hover:bg-zinc-800 hover:text-white disabled:opacity-40"
+                                title="Página siguiente"
+                            >
+                                <ChevronRight className="size-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 

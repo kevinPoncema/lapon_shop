@@ -449,6 +449,8 @@ export const commerceApi = {
                 q?: string;
                 category_id?: string;
                 is_active?: boolean;
+                in_stock?: boolean;
+                attr?: Record<string, string>;
                 page?: number;
                 per_page?: number;
             } = {},

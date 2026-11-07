@@ -26,6 +26,35 @@ class UpdateCatalogSchemaRequest extends FormRequest
     }
 
     /**
+     * Prepare data before validation: automatically generate snake_case keys from labels
+     * when a key is omitted or empty, eliminating manual key entry for users.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('metadata_schema') && is_array($this->input('metadata_schema'))) {
+            /** @var list<mixed> $schema */
+            $schema = $this->input('metadata_schema');
+
+            foreach ($schema as $index => &$item) {
+                if (is_array($item)) {
+                    $key = trim((string) ($item['key'] ?? ''));
+                    $label = trim((string) ($item['label'] ?? ''));
+
+                    if ($key === '' && $label !== '') {
+                        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower(Str::ascii($label))), '_');
+                        if (! preg_match('/^[a-z]/', $slug)) {
+                            $slug = "attr_{$slug}";
+                        }
+                        $item['key'] = substr($slug, 0, 64);
+                    }
+                }
+            }
+
+            $this->merge(['metadata_schema' => $schema]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>

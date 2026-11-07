@@ -53,11 +53,36 @@ class EloquentProductRepository implements ProductRepositoryInterface
             ->when($search !== null && $search !== '', function (Builder $query) use ($search, $operator) {
                 $query->where(function (Builder $sub) use ($search, $operator) {
                     $sub->where('name', $operator, "%{$search}%")
-                        ->orWhere('description', $operator, "%{$search}%");
+                        ->orWhere('description', $operator, "%{$search}%")
+                        ->orWhereHas('variants', fn (Builder $varSub) => $varSub->where('sku', $operator, "%{$search}%"));
                 });
             })
             ->when($filters['category_id'] ?? null, fn ($query, $catId) => $query->where('category_id', $catId))
-            ->when(isset($filters['is_active']), fn ($query) => $query->where('is_active', (bool) $filters['is_active']))
+            ->when(isset($filters['is_active']) && $filters['is_active'] !== '', function ($query) use ($filters) {
+                $query->where('is_active', filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN));
+            })
+            ->when(isset($filters['in_stock']) && $filters['in_stock'] !== '', function ($query) use ($filters) {
+                if (filter_var($filters['in_stock'], FILTER_VALIDATE_BOOLEAN)) {
+                    $query->whereHas('variants', fn ($q) => $q->where('stock', '>', 0));
+                } else {
+                    $query->whereDoesntHave('variants', fn ($q) => $q->where('stock', '>', 0));
+                }
+            })
+            ->when(isset($filters['attr']) && is_array($filters['attr']), function ($query) use ($filters) {
+                foreach ($filters['attr'] as $key => $value) {
+                    if ($value === null || $value === '') {
+                        continue;
+                    }
+                    $normalizedVal = is_string($value) && in_array(strtolower($value), ['true', 'false'], true)
+                        ? filter_var($value, FILTER_VALIDATE_BOOLEAN)
+                        : $value;
+
+                    $query->where(function ($sub) use ($key, $normalizedVal) {
+                        $sub->whereJsonContains("metadata->{$key}", $normalizedVal)
+                            ->orWhereHas('variants', fn ($varSub) => $varSub->whereJsonContains("metadata->{$key}", $normalizedVal));
+                    });
+                }
+            })
             ->latest()
             ->paginate($perPage);
     }

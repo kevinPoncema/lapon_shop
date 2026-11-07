@@ -529,3 +529,91 @@ test('administrador de tenant A no puede ver ni modificar productos de tenant B'
 
     $response->assertStatus(403);
 });
+
+test('administrador puede paginar y filtrar productos por categoria, estado, stock y atributos dinamicos', function () {
+    Sanctum::actingAs($this->admin);
+
+    $category2 = Category::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'name' => 'Accesorios Deportivos',
+        'slug' => 'accesorios-deportivos',
+    ]);
+
+    // Producto 1: en Calzado Formal, activo, con stock, talla 40, color Negro
+    $prod1 = Product::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'category_id' => $this->category->id,
+        'name' => 'Zapato Oxford Elegante',
+        'is_active' => true,
+        'metadata' => ['material' => 'Cuero'],
+    ]);
+    ProductVariant::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'product_id' => $prod1->id,
+        'sku' => 'OXFORD-40-NEG',
+        'stock' => 15,
+        'is_active' => true,
+        'metadata' => ['talla' => '40', 'color' => 'Negro'],
+    ]);
+
+    // Producto 2: en Accesorios, inactivo/oculto, sin stock, talla 38, color Café
+    $prod2 = Product::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'category_id' => $category2->id,
+        'name' => 'Cinturón Deportivo',
+        'is_active' => false,
+        'metadata' => ['material' => 'Lona'],
+    ]);
+    ProductVariant::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'product_id' => $prod2->id,
+        'sku' => 'CINT-DEP-01',
+        'stock' => 0,
+        'is_active' => true,
+        'metadata' => ['talla' => '38', 'color' => 'Café'],
+    ]);
+
+    // 1. Paginación y total
+    $resAll = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson('/api/v1/admin/products?per_page=1&page=1')
+        ->assertOk()
+        ->assertJsonStructure(['data', 'meta' => ['current_page', 'per_page', 'total', 'last_page']]);
+    expect($resAll->json('meta.total'))->toBe(2)
+        ->and($resAll->json('meta.per_page'))->toBe(1)
+        ->and(count($resAll->json('data')))->toBe(1);
+
+    // 2. Filtro por búsqueda de SKU
+    $resSku = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson('/api/v1/admin/products?q=OXFORD-40')
+        ->assertOk();
+    expect($resSku->json('meta.total'))->toBe(1)
+        ->and($resSku->json('data.0.id'))->toBe($prod1->id);
+
+    // 3. Filtro por categoría
+    $resCat = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson("/api/v1/admin/products?category_id={$category2->id}")
+        ->assertOk();
+    expect($resCat->json('meta.total'))->toBe(1)
+        ->and($resCat->json('data.0.id'))->toBe($prod2->id);
+
+    // 4. Filtro por estado activo
+    $resActive = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson('/api/v1/admin/products?is_active=1')
+        ->assertOk();
+    expect($resActive->json('meta.total'))->toBe(1)
+        ->and($resActive->json('data.0.id'))->toBe($prod1->id);
+
+    // 5. Filtro por stock disponible
+    $resStock = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson('/api/v1/admin/products?in_stock=1')
+        ->assertOk();
+    expect($resStock->json('meta.total'))->toBe(1)
+        ->and($resStock->json('data.0.id'))->toBe($prod1->id);
+
+    // 6. Filtro por atributo dinámico en variante (talla=40)
+    $resAttr = $this->withHeader('X-Tenant-Slug', 'tienda-calzado')
+        ->getJson('/api/v1/admin/products?attr[talla]=40')
+        ->assertOk();
+    expect($resAttr->json('meta.total'))->toBe(1)
+        ->and($resAttr->json('data.0.id'))->toBe($prod1->id);
+});
