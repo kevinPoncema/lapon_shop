@@ -469,15 +469,31 @@ Siguiendo la metodología **Test-First**, se deben escribir primero las pruebas 
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento `docs/spects/product_catalog_and_variants.md` está registrado en Git.
-2. [ ] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
-3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
+1. [x] El documento `docs/spects/product_catalog_and_variants.md` está registrado en Git.
+2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
+3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `CreateProductRequest`, `UpdateProductRequest`, `AdjustVariantStockRequest`, `FilterProductsRequest`, `CategoryRequest`.
    - Controladores: `AdminProductController`, `AdminVariantController`, `AdminCategoryController`, `StorefrontProductController`, `StorefrontCategoryController`.
    - Servicio de Dominio Orquestador: `ProductCatalogService` con sus métodos maestros y auxiliares atómicos.
    - Repositorios: `ProductRepositoryInterface`, `ProductVariantRepositoryInterface`, `CategoryRepositoryInterface`.
-4. [ ] Las variantes de producto cumplen todas las reglas dimensionales (`affects_stock`, validación contra `metadata_schema`, matriz de unicidad, autogeneración de SKU y stock $\ge 0$).
-5. [ ] Las búsquedas facetadas sobre `metadata` aprovechan los índices GIN de PostgreSQL (`jsonb_path_ops`).
-6. [ ] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
-7. [ ] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
-8. [ ] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+4. [x] Las variantes de producto cumplen todas las reglas dimensionales (`affects_stock`, validación contra `metadata_schema`, matriz de unicidad, autogeneración de SKU y stock $\ge 0$).
+5. [x] Las búsquedas facetadas sobre `metadata` aprovechan los índices GIN de PostgreSQL (`jsonb_path_ops`).
+6. [x] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
+7. [x] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
+8. [x] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+
+---
+
+## 8. Resumen de Implementación
+
+* **Fecha de Implementación:** 2026-11-06
+* **Componentes Principales:**
+  - Servicio Orquestador: `App\Services\Catalog\ProductCatalogService`
+  - Controladores Delgados: `AdminCategoryController`, `AdminProductController`, `AdminVariantController`, `StorefrontCategoryController`, `StorefrontProductController`
+  - Repositorios: `EloquentCategoryRepository`, `EloquentProductRepository`, `EloquentProductVariantRepository`
+  - Form Requests: `CategoryRequest`, `CreateProductRequest`, `UpdateProductRequest`, `AdjustVariantStockRequest`, `FilterProductsRequest`
+  - Excepción de Dominio: `InsufficientStockForAdjustmentException`
+* **Resultados de Validación:**
+  - 156 pruebas unitarias y de integración aprobadas (565 aserciones).
+  - PHPStan en nivel estricto superado con 0 errores.
+  - Estándar de código verificado con Laravel Pint.
