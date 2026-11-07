@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Database\Factories\PartnerStoreFactory;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -28,7 +28,7 @@ use Illuminate\Support\Carbon;
 class PartnerStore extends Model
 {
     /** @use HasFactory<PartnerStoreFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     /**
      * The table associated with the model.
@@ -86,16 +86,6 @@ class PartnerStore extends Model
     public function active(Builder $query): Builder
     {
         return $query->where('is_active', true);
-    }
-
-    /**
-     * The tenant that owns the alliance with this partner store.
-     *
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

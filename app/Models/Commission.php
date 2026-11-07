@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Database\Factories\CommissionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
 class Commission extends Model
 {
     /** @use HasFactory<CommissionFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     /**
      * The attributes that are mass assignable.
@@ -56,16 +57,6 @@ class Commission extends Model
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
         ];
-    }
-
-    /**
-     * The tenant that owns the commission.
-     *
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

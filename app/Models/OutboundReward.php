@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Database\Factories\OutboundRewardFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,7 +26,7 @@ use Illuminate\Support\Carbon;
 class OutboundReward extends Model
 {
     /** @use HasFactory<OutboundRewardFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     /**
      * The table associated with the model.
@@ -62,16 +63,6 @@ class OutboundReward extends Model
             'redeemed_at' => 'datetime',
             'email_sent_at' => 'datetime',
         ];
-    }
-
-    /**
-     * The tenant that issued the voucher.
-     *
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Database\Factories\CouponFactory;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +30,7 @@ use Illuminate\Support\Carbon;
 class Coupon extends Model
 {
     /** @use HasFactory<CouponFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     /**
      * The attributes that are mass assignable.
@@ -74,16 +75,6 @@ class Coupon extends Model
     public function active(Builder $query): Builder
     {
         return $query->where('is_active', true);
-    }
-
-    /**
-     * The tenant that owns the coupon.
-     *
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**
