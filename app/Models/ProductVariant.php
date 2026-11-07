@@ -103,4 +103,17 @@ class ProductVariant extends Model
     {
         return $this->hasMany(OrderItem::class, 'variant_id');
     }
+
+    public function effectivePrice(?float $basePrice = null): float
+    {
+        if ($this->price !== null) {
+            return (float) $this->price;
+        }
+
+        if ($basePrice !== null) {
+            return $basePrice;
+        }
+
+        return (float) ($this->product->base_price ?? 0.0);
+    }
 }
