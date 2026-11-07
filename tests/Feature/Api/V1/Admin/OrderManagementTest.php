@@ -232,7 +232,7 @@ test('rechaza con 409 intentos de transicion desde estados finales', function ()
         ]);
 
     $response->assertStatus(409)
-        ->assertJsonPath('error.code', 'INVALID_ORDER_TRANSITION');
+        ->assertJsonPath('error.code', 'INVALID_ORDER_STATUS_TRANSITION');
 });
 
 test('administrador de tenant A no puede ver ni modificar ordenes de tenant B', function () {
