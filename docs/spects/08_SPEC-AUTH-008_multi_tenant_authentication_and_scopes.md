@@ -253,14 +253,14 @@ Antes de implementar controladores, middlewares o servicios de autenticación, s
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/08_SPEC-AUTH-008_multi_tenant_authentication_and_scopes.md` está versionado en Git.
-2. [ ] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
-3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
+1. [x] El documento de especificación `docs/spects/08_SPEC-AUTH-008_multi_tenant_authentication_and_scopes.md` está versionado en Git.
+2. [x] Se escriben y ejecutan primero todas las pruebas Feature y Unit en Pest, verificando su fallo inicial (`RED`).
+3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Adaptación de `PartnerStore` como `Authenticatable` con `HasApiTokens`.
    - Middlewares de perímetro: `EnsureTenantMembership` (`tenant.member` verificando `instanceof User` + ability) y `EnsurePartnerMembership` (`partner.member` verificando `instanceof PartnerStore` + `tokenCan('partner-portal')`).
    - Form Requests: `AdminLoginRequest`, `PartnerPortalLoginRequest` y Rate Limiter `tenant-auth`.
    - Controladores: `AdminAuthController`, `PartnerPortalAuthController`.
    - Servicio de Dominio Orquestador: `TenantAuthenticationService` con métodos auxiliares atómicos.
    - Repositorios: `UserRepositoryInterface` / `EloquentUserRepository` y método `findByPortalEmail` en `PartnerStoreRepositoryInterface`.
-4. [ ] Queda probado que un token de `PartnerStore` jamás puede invocar endpoints de `/api/v1/admin/*` aunque comparta el mismo `tenant_id`.
-5. [ ] La suite completa de Pest pasa al 100% (`vendor/bin/pest`), PHPStan reporta 0 errores y Pint formatea sin pendientes.
+4. [x] Queda probado que un token de `PartnerStore` jamás puede invocar endpoints de `/api/v1/admin/*` aunque comparta el mismo `tenant_id`.
+5. [x] La suite completa de Pest pasa al 100% (`vendor/bin/pest`), PHPStan reporta 0 errores y Pint formatea sin pendientes.
