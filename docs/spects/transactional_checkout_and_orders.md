@@ -334,16 +334,16 @@ En apego a la metodología **Test-First**, se deben escribir primero las pruebas
 
 ## 7. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento `docs/spects/transactional_checkout_and_orders.md` está versionado en Git.
-2. [ ] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
-3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
+1. [x] El documento `docs/spects/transactional_checkout_and_orders.md` está versionado en Git.
+2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo en rojo (`RED`).
+3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Request: `StorefrontCheckoutRequest`.
    - Controlador: `StorefrontCheckoutController`.
    - Servicio de Dominio Orquestador: `CheckoutOrchestratorService` con sus métodos auxiliares atómicos.
    - Repositorios: `OrderRepositoryInterface`, `OrderItemRepositoryInterface`, `CommissionRepositoryInterface`.
-4. [ ] La cabecera `Idempotency-Key` previene duplicidad respaldada por Redis (TTL 24h).
-5. [ ] El inventario se descuenta con bloqueo pesimista `lockForUpdate()` dentro de `DB::transaction()`.
-6. [ ] La respuesta incluye la URL oficial de WhatsApp con el desglose del pedido codificado.
-7. [ ] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
-8. [ ] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
-9. [ ] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+4. [x] La cabecera `Idempotency-Key` previene duplicidad respaldada por Redis (TTL 24h).
+5. [x] El inventario se descuenta con bloqueo pesimista `lockForUpdate()` dentro de `DB::transaction()`.
+6. [x] La respuesta incluye la URL oficial de WhatsApp con el desglose del pedido codificado.
+7. [x] La suite de pruebas Pest pasa al 100% (`vendor/bin/pest`).
+8. [x] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
+9. [x] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
