@@ -25,8 +25,8 @@ test('calculo de expiracion diferencia correctamente los dias de vigencia de Adm
     $partnerExpiration = $service->calculatePartnerExpiration();
 
     // Por defecto: 7 días (10080 mins) para Admin y 30 días (43200 mins) para Partner
-    expect($adminExpiration->diffInDays(now()))->toBe(7)
-        ->and($partnerExpiration->diffInDays(now()))->toBe(30);
+    expect((int) round(now()->diffInDays($adminExpiration)))->toBe(7)
+        ->and((int) round(now()->diffInDays($partnerExpiration)))->toBe(30);
 });
 
 test('saneamiento de correo electronico normaliza mayusculas y elimina espacios laterales', function () {
