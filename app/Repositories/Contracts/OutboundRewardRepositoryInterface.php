@@ -30,5 +30,14 @@ interface OutboundRewardRepositoryInterface
 
     public function findByIdWithRelations(string $rewardId): ?OutboundReward;
 
+    public function findDetailedByCodeForPartner(string $partnerStoreId, string $code): ?OutboundReward;
+
+    public function findByCodeForPartnerWithLock(string $partnerStoreId, string $code): ?OutboundReward;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateStatus(OutboundReward $reward, array $attributes): OutboundReward;
+
     public function markEmailSent(OutboundReward $reward, Carbon $sentAt): OutboundReward;
 }

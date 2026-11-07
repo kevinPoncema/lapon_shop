@@ -37,4 +37,18 @@ interface TenantConfigRepositoryInterface
      * @param  list<array<string, mixed>>  $shippingZones
      */
     public function updateShippingZones(string $tenantId, array $shippingZones): TenantConfig;
+
+    /**
+     * Update contact info and bank accounts.
+     *
+     * @param  array<string, mixed>  $contactInfo
+     */
+    public function updateContactInfo(string $tenantId, array $contactInfo): TenantConfig;
+
+    /**
+     * Update outbound reward rules for partner stores.
+     *
+     * @param  array<string, mixed>  $outboundRewardRules
+     */
+    public function updateOutboundRewardRules(string $tenantId, array $outboundRewardRules): TenantConfig;
 }

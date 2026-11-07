@@ -59,8 +59,37 @@ class EloquentOutboundRewardRepository implements OutboundRewardRepositoryInterf
     public function findByIdWithRelations(string $rewardId): ?OutboundReward
     {
         return OutboundReward::query()
-            ->with(['order', 'partnerStore'])
+            ->with(['order.tenant', 'partnerStore'])
             ->find($rewardId);
+    }
+
+    public function findDetailedByCodeForPartner(string $partnerStoreId, string $code): ?OutboundReward
+    {
+        return OutboundReward::query()
+            ->with(['order.tenant', 'partnerStore'])
+            ->where('partner_store_id', $partnerStoreId)
+            ->whereRaw('UPPER(code) = ?', [strtoupper(trim($code))])
+            ->first();
+    }
+
+    public function findByCodeForPartnerWithLock(string $partnerStoreId, string $code): ?OutboundReward
+    {
+        return OutboundReward::query()
+            ->with(['order.tenant', 'partnerStore'])
+            ->where('partner_store_id', $partnerStoreId)
+            ->whereRaw('UPPER(code) = ?', [strtoupper(trim($code))])
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateStatus(OutboundReward $reward, array $attributes): OutboundReward
+    {
+        $reward->update($attributes);
+
+        return $reward->fresh();
     }
 
     public function markEmailSent(OutboundReward $reward, Carbon $sentAt): OutboundReward

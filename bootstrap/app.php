@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePartnerMembership;
 use App\Http\Middleware\EnsureTenantMembership;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant.context' => ResolveTenantContext::class,
             'tenant.member' => EnsureTenantMembership::class,
+            'partner.member' => EnsurePartnerMembership::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

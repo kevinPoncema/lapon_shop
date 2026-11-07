@@ -95,4 +95,39 @@ class EloquentTenantConfigRepository implements TenantConfigRepositoryInterface
 
         return $config->refresh();
     }
+
+    /**
+     * Update contact info and bank accounts.
+     *
+     * @param  array<string, mixed>  $contactInfo
+     */
+    public function updateContactInfo(string $tenantId, array $contactInfo): TenantConfig
+    {
+        $config = $this->getOrCreateByTenantId($tenantId);
+
+        $currentContact = $config->contact_info ?? [];
+        $mergedContact = array_merge($currentContact, $contactInfo);
+
+        $config->update([
+            'contact_info' => $mergedContact,
+        ]);
+
+        return $config->refresh();
+    }
+
+    /**
+     * Update outbound reward rules for partner stores.
+     *
+     * @param  array<string, mixed>  $outboundRewardRules
+     */
+    public function updateOutboundRewardRules(string $tenantId, array $outboundRewardRules): TenantConfig
+    {
+        $config = $this->getOrCreateByTenantId($tenantId);
+
+        $config->update([
+            'outbound_reward_rules' => $outboundRewardRules,
+        ]);
+
+        return $config->refresh();
+    }
 }
