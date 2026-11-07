@@ -6,6 +6,8 @@ use App\Context\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateBrandingConfigRequest;
 use App\Http\Requests\Admin\UpdateCatalogSchemaRequest;
+use App\Http\Requests\Admin\UpdateContactInfoRequest;
+use App\Http\Requests\Admin\UpdateOutboundRewardRulesRequest;
 use App\Http\Requests\Admin\UpdateShippingZonesRequest;
 use App\Services\Tenant\TenantConfigService;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +67,36 @@ class AdminTenantConfigController extends Controller
         TenantContext $tenantContext
     ): JsonResponse {
         $updated = $this->tenantConfigService->orchestrateShippingZonesUpdate(
+            $tenantContext->get(),
+            $request->validated()
+        );
+
+        return response()->json($updated, Response::HTTP_OK);
+    }
+
+    /**
+     * Actualiza la información de contacto y cuentas bancarias.
+     */
+    public function updateContactInfo(
+        UpdateContactInfoRequest $request,
+        TenantContext $tenantContext
+    ): JsonResponse {
+        $updated = $this->tenantConfigService->orchestrateContactInfoUpdate(
+            $tenantContext->get(),
+            $request->validated()
+        );
+
+        return response()->json($updated, Response::HTTP_OK);
+    }
+
+    /**
+     * Actualiza las reglas de recompensas salientes cruzadas.
+     */
+    public function updateOutboundRewardRules(
+        UpdateOutboundRewardRulesRequest $request,
+        TenantContext $tenantContext
+    ): JsonResponse {
+        $updated = $this->tenantConfigService->orchestrateOutboundRewardRulesUpdate(
             $tenantContext->get(),
             $request->validated()
         );

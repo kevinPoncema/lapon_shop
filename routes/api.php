@@ -5,10 +5,12 @@ use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
 use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
+use App\Http\Controllers\Api\V1\Admin\AdminPartnerStoreController;
 use App\Http\Controllers\Api\V1\Admin\AdminProductController;
 use App\Http\Controllers\Api\V1\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\V1\Admin\AdminTenantConfigController;
 use App\Http\Controllers\Api\V1\Admin\AdminVariantController;
+use App\Http\Controllers\Api\V1\PartnerPortal\PartnerVoucherController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCartQuoteController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCategoryController;
 use App\Http\Controllers\Api\V1\Storefront\StorefrontCheckoutController;
@@ -58,6 +60,21 @@ Route::prefix('v1')
 
                 Route::put('/config/shipping-zones', [AdminTenantConfigController::class, 'updateShippingZones'])
                     ->name('api.v1.admin.config.shipping_zones.update');
+
+                Route::put('/config/contact-info', [AdminTenantConfigController::class, 'updateContactInfo'])
+                    ->name('api.v1.admin.config.contact_info.update');
+
+                Route::put('/config/outbound-rewards', [AdminTenantConfigController::class, 'updateOutboundRewardRules'])
+                    ->name('api.v1.admin.config.outbound_rewards.update');
+
+                Route::get('/partner-stores', [AdminPartnerStoreController::class, 'index'])
+                    ->name('api.v1.admin.partner_stores.index');
+
+                Route::post('/partner-stores', [AdminPartnerStoreController::class, 'store'])
+                    ->name('api.v1.admin.partner_stores.store');
+
+                Route::put('/partner-stores/{id}', [AdminPartnerStoreController::class, 'update'])
+                    ->name('api.v1.admin.partner_stores.update');
 
                 Route::get('/categories', [AdminCategoryController::class, 'index'])
                     ->name('api.v1.admin.categories.index');
@@ -118,5 +135,16 @@ Route::prefix('v1')
 
                 Route::patch('/orders/{id}/status', [AdminOrderController::class, 'updateStatus'])
                     ->name('api.v1.admin.orders.status.update');
+            });
+
+        // Portal de Comercio Aliado (Partner Portal)
+        Route::prefix('partner-portal')
+            ->middleware(['auth:sanctum', 'partner.member'])
+            ->group(function () {
+                Route::get('/vouchers/{code}', [PartnerVoucherController::class, 'show'])
+                    ->name('api.v1.partner_portal.vouchers.show');
+
+                Route::post('/vouchers/{code}/redeem', [PartnerVoucherController::class, 'redeem'])
+                    ->name('api.v1.partner_portal.vouchers.redeem');
             });
     });
