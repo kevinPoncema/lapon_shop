@@ -343,16 +343,16 @@ Antes de implementar cualquier controlador, servicio, job o repositorio, se debe
 
 ## 8. Criterios de Aceptación (Definition of Done - DoD)
 
-1. [ ] El documento de especificación `docs/spects/order_lifecycle_commissions_and_rewards.md` está versionado en Git.
-2. [ ] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo inicial en rojo (`RED`).
-3. [ ] Todos los componentes de arquitectura obligatorios están implementados:
+1. [x] El documento de especificación `docs/spects/order_lifecycle_commissions_and_rewards.md` está versionado en Git.
+2. [x] Se escriben y ejecutan en primer lugar todas las pruebas Feature y Unit en Pest, verificando su fallo inicial en rojo (`RED`).
+3. [x] Todos los componentes de arquitectura obligatorios están implementados:
    - Form Requests: `FilterOrdersRequest`, `UpdateOrderStatusRequest`, `SettleCommissionsRequest`.
    - Controladores: `AdminOrderController` y `AdminCommissionController`.
    - Servicios de Dominio Orquestadores: `OrderLifecycleService` y `CommissionSettlementService` estructurados con métodos maestros y métodos auxiliares atómicos.
    - Job Asíncrono: `SendOutboundRewardVoucherJob` despachado con `afterCommit()`.
    - Repositorios: `OrderRepositoryInterface`, `CommissionRepositoryInterface`, `OutboundRewardRepositoryInterface`, `PartnerStoreRepositoryInterface` y sus implementaciones Eloquent.
-4. [ ] Las órdenes terminales (`COMPLETADA`, `CANCELADA`) son estrictamente inmutables (`409 Conflict` ante reintentos).
-5. [ ] La cancelación restituye el inventario con `lockForUpdate()` sin riesgo de duplicación ni condiciones de carrera.
-6. [ ] La suite completa de Pest pasa al 100% (`vendor/bin/pest`).
-7. [ ] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
-8. [ ] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
+4. [x] Las órdenes terminales (`COMPLETADA`, `CANCELADA`) son estrictamente inmutables (`409 Conflict` ante reintentos).
+5. [x] La cancelación restituye el inventario con `lockForUpdate()` sin riesgo de duplicación ni condiciones de carrera.
+6. [x] La suite completa de Pest pasa al 100% (`vendor/bin/pest`).
+7. [x] PHPStan en nivel estricto reporta 0 errores (`vendor/bin/phpstan analyse`).
+8. [x] Código formateado con Laravel Pint (`vendor/bin/pint --dirty --format agent`).
