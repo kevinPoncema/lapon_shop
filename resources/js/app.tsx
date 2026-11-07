@@ -13,6 +13,9 @@ void createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'welcome':
+            case name.startsWith('storefront/'):
+            case name.startsWith('tenant-admin/'):
+            case name.startsWith('partner-portal/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
@@ -27,12 +30,12 @@ void createInertiaApp({
         return (
             <TooltipProvider delayDuration={0}>
                 {app}
-                <Toaster />
+                <Toaster richColors position="bottom-right" />
             </TooltipProvider>
         );
     },
     progress: {
-        color: '#4B5563',
+        color: '#6366f1',
     },
 });
 
