@@ -7,5 +7,6 @@ use App\Providers\TelescopeServiceProvider;
 return [
     AppServiceProvider::class,
     FortifyServiceProvider::class,
+    RepositoryServiceProvider::class,
     TelescopeServiceProvider::class,
 ];

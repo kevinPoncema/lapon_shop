@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Context\TenantContext;
+use App\Repositories\Contracts\TenantConfigRepositoryInterface;
+use App\Repositories\Eloquent\EloquentTenantConfigRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class, fn () => new TenantContext);
+        $this->app->bind(TenantConfigRepositoryInterface::class, EloquentTenantConfigRepository::class);
     }
 
     /**
