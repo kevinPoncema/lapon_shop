@@ -14,6 +14,7 @@ El presente documento define la arquitectura técnica estandarizada que rige el 
 3. **Controladores Delgados (Thin Controllers):** Los controladores actúan únicamente como adaptadores del protocolo HTTP (recibir input validado, invocar la orquestación y retornar una respuesta formateada).
 4. **Patrón Orquestador (Orchestrator Pattern):** Los flujos transaccionales y complejos de negocio no se diseminan en múltiples servicios desconectados; una función orquestadora gobierna el flujo maestro ejecutando funciones auxiliares atómicas bajo una transacción de base de datos (`ACID`).
 5. **Capa de Repositorios (Data Access Layer):** Encapsula el acceso a Eloquent, desacopla la persistencia de la lógica de dominio y asegura que cualquier consulta esté acotada al `tenant_id`.
+6. **Desarrollo Guiado por Pruebas (Test-First / TDD Obligatorio):** Ninguna línea de código de producción (Request, Controller, Orchestrator, Service, Repository o Model) puede crearse o modificarse sin haber escrito primero sus pruebas automatizadas (Feature Tests y Unit Tests) en estado fallido (Rojo / Red). La cobertura debe contemplar el caso de éxito, los fallos de validación, las reglas de negocio y, de manera intransigente, la violación de aislamiento multi-tenant.
 
 ---
 
@@ -740,8 +741,136 @@ Este bloqueo permanece activo exclusivamente durante la duración de `DB::transa
 | **Model** | Declarar casts, relaciones tipadas, scopes locales y el trait `BelongsToTenant`. | Contener lógica de orquestación de pedidos o manipulación de requests. |
 
 ### Checklist antes de fusionar código a producción:
-1. ¿El modelo incluye el trait `BelongsToTenant`?
-2. ¿Las consultas del repositorio están protegidas contra N+1 mediante `with()`?
-3. ¿Toda mutación compleja de varias entidades corre dentro de un **Orquestador** bajo `DB::transaction()`?
-4. ¿Las operaciones sensibles a inventario ejecutan `lockForUpdate()`?
-5. ¿La suite de pruebas Pest cubre tanto el escenario exitoso como los fallos de aislamiento multi-tenant?
+1. **Fase Roja Previa (Test-First):** ¿Se crearon las pruebas Feature y Unit en Pest ANTES de escribir el código de producción y se verificó que fallaron inicialmente en rojo?
+2. **Aislamiento Multi-Tenant:** ¿El modelo incluye el trait `BelongsToTenant` y los tests comprueban que no es posible leer ni mutar registros de otro tenant?
+3. **Cero N+1:** ¿Las consultas del repositorio están protegidas contra N+1 mediante `with()` explícito?
+4. **Transaccionalidad en Orquestador:** ¿Toda mutación compleja de varias entidades corre dentro de un **Orquestador** bajo `DB::transaction()`?
+5. **Concurrencia Segura:** ¿Las operaciones sensibles a inventario o fondos ejecutan `lockForUpdate()`?
+6. **Calidad de Código y Estilo:** ¿`pest` pasa al 100%, `phpstan analyse` tiene 0 errores y se ejecutó `vendor/bin/pint --dirty --format agent`?
+
+---
+
+## 11. Metodología Obligatoria de Desarrollo: Test-First / Test-Driven Development (TDD)
+
+### 11.1. Regla Inquebrantable: Cero Código de Producción sin Pruebas Previas
+
+En este proyecto rige una directriz estricta: **bajo ninguna circunstancia se escribe código de producción (Form Requests, Controllers, Orchestrators, Services, Repositories o Rutas) sin antes haber diseñado, escrito y ejecutado sus respectivas pruebas automatizadas en Pest en estado fallido (Rojo / Red)**.
+
+El flujo de trabajo es puramente Test-Driven Development (TDD):
+
+```mermaid
+flowchart LR
+    A["1. RED: Escribir Feature & Unit Tests"] --> B["2. Ejecutar Pest (Verificar que Falla)"]
+    B --> C["3. GREEN: Implementar Rebanada Vertical (Request, Repo, Service, Ctrl)"]
+    C --> D["4. Ejecutar Pest (Verificar que Pasa)"]
+    D --> E["5. REFACTOR: Pint + PHPStan + Optimización"]
+```
+
+---
+
+### 11.2. Clasificación y Estructura de Pruebas en Pest
+
+Las pruebas se organizan en dos suites claramente delimitadas bajo el directorio `tests/`:
+
+```text
+tests/
+├── Feature/
+│   ├── Middleware/
+│   │   ├── ResolveTenantContextTest.php
+│   │   └── RequireIdempotencyKeyTest.php
+│   └── Api/
+│       └── V1/
+│           ├── Storefront/
+│           │   ├── CatalogTest.php
+│           │   ├── CartQuoteTest.php
+│           │   ├── CheckoutTest.php
+│           │   └── StorefrontConfigTest.php
+│           ├── Admin/
+│           │   ├── TenantConfigTest.php
+│           │   ├── ProductCatalogManagementTest.php
+│           │   └── OrderManagementTest.php
+│           └── PartnerPortal/
+│               └── VoucherRedemptionTest.php
+└── Unit/
+    ├── Context/
+    │   └── TenantContextTest.php
+    ├── Services/
+    │   ├── Cart/
+    │   │   ├── CartPricingCalculatorTest.php
+    │   │   └── PromotionEvaluatorTest.php
+    │   ├── Inventory/
+    │   │   └── StockReservationServiceTest.php
+    │   └── Commissions/
+    │       └── CommissionCalculatorServiceTest.php
+    └── Orchestrators/
+        ├── CheckoutOrchestratorTest.php
+        └── TenantManageOrchestratorTest.php
+```
+
+---
+
+### 11.3. Requisitos de Cobertura Obligatoria por Entidad / Endpoint
+
+Toda rebanada vertical (vertical slice) de una entidad debe cubrir como mínimo los siguientes vectores de prueba antes de considerarse completa:
+
+#### A. Pruebas de Característica (Feature Tests):
+1. **Resolución y Estado del Tenant:**
+   - Petición sin cabecera `X-Tenant-Slug` ni subdominio reconocido $\rightarrow$ Retorna `400 Bad Request` o `404 Not Found` (`TENANT_NOT_FOUND`).
+   - Petición para un tenant en estado `SUSPENDIDO` $\rightarrow$ Retorna `403 Forbidden` (`TENANT_SUSPENDED`).
+   - Petición válida con tenant activo $\rightarrow$ Se resuelve el contexto y se procesa la solicitud.
+2. **Aislamiento Hermético Multi-Tenant (Cross-Tenant Leakage):**
+   - Una petición autenticada o contextualizada en el `Tenant A` **jamás** debe poder visualizar, actualizar ni eliminar entidades creadas por el `Tenant B`.
+   - Se debe asertar explícitamente que la consulta retorna `404 Not Found` (o `403 Forbidden`) y que la base de datos del otro tenant permanece inalterada (`assertDatabaseHas` con valores intactos).
+3. **Validación de Entradas (Form Request Validation):**
+   - Cuerpos de petición vacíos o con tipos de datos inválidos $\rightarrow$ Retorna `422 Unprocessable Entity`.
+   - Inclusión de claves reservadas del sistema o valores no permitidos $\rightarrow$ Retorna `422` con mensaje descriptivo de la regla infringida.
+4. **Contrato de Respuesta y Códigos HTTP:**
+   - Creación exitosa $\rightarrow$ `201 Created` con headers semánticos.
+   - Lectura / Actualización exitosa $\rightarrow$ `200 OK`.
+   - Eliminación exitosa $\rightarrow$ `200 OK` o `204 No Content`.
+   - Asertar la estructura JSON exacta (`assertJsonStructure`) y los campos obligatorios del contrato de API.
+5. **Idempotencia y Concurrencia:**
+   - Peticiones repetidas con la misma cabecera `Idempotency-Key` $\rightarrow$ Retornan la respuesta previamente almacenada sin duplicar registros en base de datos.
+   - Intentos simultáneos de canje o reserva que exceden inventario/usos $\rightarrow$ Retornan `409 Conflict`.
+
+#### B. Pruebas Unitarias (Unit Tests):
+1. **Lógica Algorítmica y Matemáticas de Negocio:**
+   - Cálculos de subtotales, redondeo de decimales y aplicación de promociones en `CartPricingCalculator`.
+   - Fórmulas de comisiones por porcentaje y montos fijos en `CommissionCalculatorService`.
+2. **Validación de Esquemas Dinámicos:**
+   - Métodos auxiliares que validan `catalog_schema` en `TenantConfig` (validación de campos permitidos, detección de filtros huérfanos).
+3. **Aislamiento de Componentes:**
+   - Prueba unitaria de métodos auxiliares del orquestador garantizando que cada paso genera el DTO o mutación esperada.
+
+---
+
+### 11.4. Protocolo de Ejecución del Desarrollador (Step-by-Step)
+
+Para cada nueva entidad (ej. `Tenant` + `TenantConfig`):
+
+1. **Diseñar el Plan de Pruebas:**
+   Listar los archivos de prueba que se van a crear y los casos de uso específicos a probar.
+2. **Escribir las Pruebas (RED):**
+   Crear los archivos en `tests/Feature/...` y `tests/Unit/...` usando Pest.
+3. **Ejecutar Pest para Validar Fallos:**
+   ```bash
+   docker exec shop-app vendor/bin/pest tests/Feature/Api/V1/Storefront/StorefrontConfigTest.php
+   ```
+   *Debe fallar porque las rutas, controladores o repositorios aún no existen.*
+4. **Implementar los Componentes de Producción (GREEN):**
+   - Crear / Modificar Form Request.
+   - Crear Contrato de Repositorio e Implementación Eloquent.
+   - Crear Servicios de Dominio u Orquestadores.
+   - Crear Controlador y Registrar Ruta en `routes/api.php`.
+5. **Reejecutar Pest:**
+   ```bash
+   docker exec shop-app vendor/bin/pest
+   ```
+   *Todas las pruebas deben quedar en verde.*
+6. **Garantizar Calidad Estática y Estilo:**
+   ```bash
+   docker exec shop-app vendor/bin/pint --dirty --format agent
+   docker exec shop-app ./vendor/bin/phpstan analyse
+   ```
+7. **Commit Semántico:**
+   Realizar commits atómicos que reflejen primero los tests y luego la implementación, o la rebanada completa probada.

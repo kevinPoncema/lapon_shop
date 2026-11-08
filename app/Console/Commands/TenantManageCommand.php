@@ -121,8 +121,6 @@ class TenantManageCommand extends Command
         };
     }
 
- 
-
     /**
      * Orquesta la creación de un nuevo inquilino coordinando los pasos auxiliares.
      */
@@ -140,6 +138,7 @@ class TenantManageCommand extends Command
             $tenant = $this->persistTenantWithConfig($validatedData);
             $this->displayTenantSummary($tenant);
             $this->promptInitialUserCreation($tenant);
+
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error('Error al persistir el inquilino: '.$e->getMessage());
@@ -297,7 +296,6 @@ class TenantManageCommand extends Command
 
         return self::SUCCESS;
     }
-
 
     /**
      * Submenú interactivo para gestionar usuarios de un inquilino.
@@ -639,7 +637,6 @@ class TenantManageCommand extends Command
 
         return self::SUCCESS;
     }
-
 
     /**
      * Resuelve el tenant activo a partir de la opción --tenant o solicitando selección.

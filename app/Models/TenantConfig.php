@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Database\Factories\TenantConfigFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -17,11 +17,12 @@ use Illuminate\Support\Carbon;
  * @property list<array<string, mixed>> $filter_config
  * @property array<string, mixed> $outbound_reward_rules
  * @property Carbon|null $updated_at
+ * @property-read Tenant $tenant
  */
 class TenantConfig extends Model
 {
     /** @use HasFactory<TenantConfigFactory> */
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     /**
      * The table associated with the model.
@@ -89,15 +90,5 @@ class TenantConfig extends Model
             'outbound_reward_rules' => 'array',
             'updated_at' => 'datetime',
         ];
-    }
-
-    /**
-     * The tenant that owns the configuration.
-     *
-     * @return BelongsTo<Tenant, $this>
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 }

@@ -1,8 +1,177 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminAffiliateController;
+use App\Http\Controllers\Api\V1\Admin\AdminAuthController;
+use App\Http\Controllers\Api\V1\Admin\AdminCategoryController;
+use App\Http\Controllers\Api\V1\Admin\AdminCommissionController;
+use App\Http\Controllers\Api\V1\Admin\AdminCouponController;
+use App\Http\Controllers\Api\V1\Admin\AdminOrderController;
+use App\Http\Controllers\Api\V1\Admin\AdminPartnerStoreController;
+use App\Http\Controllers\Api\V1\Admin\AdminProductController;
+use App\Http\Controllers\Api\V1\Admin\AdminPromotionController;
+use App\Http\Controllers\Api\V1\Admin\AdminTenantConfigController;
+use App\Http\Controllers\Api\V1\Admin\AdminVariantController;
+use App\Http\Controllers\Api\V1\PartnerPortal\PartnerPortalAuthController;
+use App\Http\Controllers\Api\V1\PartnerPortal\PartnerVoucherController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontCartQuoteController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontCategoryController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontCheckoutController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontConfigController;
+use App\Http\Controllers\Api\V1\Storefront\StorefrontProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::prefix('v1')
+    ->middleware(['tenant.context'])
+    ->group(function () {
+        // Vitrina Pública (Storefront)
+        Route::get('/storefront/config', StorefrontConfigController::class)
+            ->name('api.v1.storefront.config');
+
+        Route::get('/storefront/categories', StorefrontCategoryController::class)
+            ->name('api.v1.storefront.categories.index');
+
+        Route::get('/storefront/products', [StorefrontProductController::class, 'index'])
+            ->name('api.v1.storefront.products.index');
+
+        Route::get('/storefront/products/{slug}', [StorefrontProductController::class, 'show'])
+            ->name('api.v1.storefront.products.show');
+
+        Route::post('/storefront/cart/quote', [StorefrontCartQuoteController::class, 'quote'])
+            ->name('api.v1.storefront.cart.quote');
+
+        Route::post('/storefront/checkout', StorefrontCheckoutController::class)
+            ->name('api.v1.storefront.checkout');
+
+        // Autenticación Administrativa (Pública con tenant.context y throttle)
+        Route::post('/admin/auth/login', [AdminAuthController::class, 'login'])
+            ->middleware('throttle:tenant-auth')
+            ->name('api.v1.admin.auth.login');
+
+        // Autenticación Portal Aliado (Pública con tenant.context y throttle)
+        Route::post('/partner-portal/auth/login', [PartnerPortalAuthController::class, 'login'])
+            ->middleware('throttle:tenant-auth')
+            ->name('api.v1.partner_portal.auth.login');
+
+        // Panel Administrativo (Admin)
+        Route::prefix('admin')
+            ->middleware(['auth:sanctum', 'tenant.member'])
+            ->group(function () {
+                Route::get('/auth/me', [AdminAuthController::class, 'me'])
+                    ->name('api.v1.admin.auth.me');
+
+                Route::post('/auth/logout', [AdminAuthController::class, 'logout'])
+                    ->name('api.v1.admin.auth.logout');
+
+                Route::post('/auth/logout-all', [AdminAuthController::class, 'logoutAll'])
+                    ->name('api.v1.admin.auth.logout_all');
+
+                Route::get('/config', [AdminTenantConfigController::class, 'show'])
+                    ->name('api.v1.admin.config.show');
+
+                Route::put('/config/catalog-schema', [AdminTenantConfigController::class, 'updateCatalogSchema'])
+                    ->name('api.v1.admin.config.catalog_schema.update');
+
+                Route::put('/config/branding', [AdminTenantConfigController::class, 'updateBranding'])
+                    ->name('api.v1.admin.config.branding.update');
+
+                Route::put('/config/shipping-zones', [AdminTenantConfigController::class, 'updateShippingZones'])
+                    ->name('api.v1.admin.config.shipping_zones.update');
+
+                Route::put('/config/contact-info', [AdminTenantConfigController::class, 'updateContactInfo'])
+                    ->name('api.v1.admin.config.contact_info.update');
+
+                Route::put('/config/outbound-rewards', [AdminTenantConfigController::class, 'updateOutboundRewardRules'])
+                    ->name('api.v1.admin.config.outbound_rewards.update');
+
+                Route::get('/partner-stores', [AdminPartnerStoreController::class, 'index'])
+                    ->name('api.v1.admin.partner_stores.index');
+
+                Route::post('/partner-stores', [AdminPartnerStoreController::class, 'store'])
+                    ->name('api.v1.admin.partner_stores.store');
+
+                Route::put('/partner-stores/{id}', [AdminPartnerStoreController::class, 'update'])
+                    ->name('api.v1.admin.partner_stores.update');
+
+                Route::get('/categories', [AdminCategoryController::class, 'index'])
+                    ->name('api.v1.admin.categories.index');
+
+                Route::post('/categories', [AdminCategoryController::class, 'store'])
+                    ->name('api.v1.admin.categories.store');
+
+                Route::get('/products', [AdminProductController::class, 'index'])
+                    ->name('api.v1.admin.products.index');
+
+                Route::post('/products', [AdminProductController::class, 'store'])
+                    ->name('api.v1.admin.products.store');
+
+                Route::get('/products/{id}', [AdminProductController::class, 'show'])
+                    ->name('api.v1.admin.products.show');
+
+                Route::put('/products/{id}', [AdminProductController::class, 'update'])
+                    ->name('api.v1.admin.products.update');
+
+                Route::patch('/variants/{id}/stock', [AdminVariantController::class, 'adjustStock'])
+                    ->name('api.v1.admin.variants.stock.adjust');
+
+                Route::patch('/variants/{id}/status', [AdminVariantController::class, 'updateStatus'])
+                    ->name('api.v1.admin.variants.status.update');
+
+                Route::get('/promotions', [AdminPromotionController::class, 'index'])
+                    ->name('api.v1.admin.promotions.index');
+
+                Route::post('/promotions', [AdminPromotionController::class, 'store'])
+                    ->name('api.v1.admin.promotions.store');
+
+                Route::put('/promotions/{id}', [AdminPromotionController::class, 'update'])
+                    ->name('api.v1.admin.promotions.update');
+
+                Route::get('/coupons', [AdminCouponController::class, 'index'])
+                    ->name('api.v1.admin.coupons.index');
+
+                Route::post('/coupons', [AdminCouponController::class, 'store'])
+                    ->name('api.v1.admin.coupons.store');
+
+                Route::get('/affiliates', [AdminAffiliateController::class, 'index'])
+                    ->name('api.v1.admin.affiliates.index');
+
+                Route::post('/affiliates', [AdminAffiliateController::class, 'store'])
+                    ->name('api.v1.admin.affiliates.store');
+
+                Route::get('/affiliates/{affiliate_id}/commissions', [AdminCommissionController::class, 'index'])
+                    ->name('api.v1.admin.affiliates.commissions.index');
+
+                Route::post('/affiliates/{affiliate_id}/commissions/settle', [AdminCommissionController::class, 'settle'])
+                    ->name('api.v1.admin.affiliates.commissions.settle');
+
+                Route::get('/orders', [AdminOrderController::class, 'index'])
+                    ->name('api.v1.admin.orders.index');
+
+                Route::get('/orders/{id}', [AdminOrderController::class, 'show'])
+                    ->name('api.v1.admin.orders.show');
+
+                Route::patch('/orders/{id}/status', [AdminOrderController::class, 'updateStatus'])
+                    ->name('api.v1.admin.orders.status.update');
+            });
+
+        // Portal de Comercio Aliado (Partner Portal)
+        Route::prefix('partner-portal')
+            ->middleware(['auth:sanctum', 'partner.member'])
+            ->group(function () {
+                Route::get('/auth/me', [PartnerPortalAuthController::class, 'me'])
+                    ->name('api.v1.partner_portal.auth.me');
+
+                Route::post('/auth/logout', [PartnerPortalAuthController::class, 'logout'])
+                    ->name('api.v1.partner_portal.auth.logout');
+
+                Route::get('/vouchers/{code}', [PartnerVoucherController::class, 'show'])
+                    ->name('api.v1.partner_portal.vouchers.show');
+
+                Route::post('/vouchers/{code}/redeem', [PartnerVoucherController::class, 'redeem'])
+                    ->name('api.v1.partner_portal.vouchers.redeem');
+            });
+    });

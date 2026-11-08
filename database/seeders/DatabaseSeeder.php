@@ -2,24 +2,24 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            DemoTenantSeeder::class,
+            // Descomenta la siguiente línea para poblar miles de productos de estrés:
+            // DemoCatalogStressSeeder::class,
         ]);
+
+        // O activa la variable de entorno: SEED_STRESS_CATALOG=true
+        if ((bool) config('app.seed_stress_catalog', false)) {
+            $this->call(DemoCatalogStressSeeder::class);
+        }
     }
 }

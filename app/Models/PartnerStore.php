@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property string $id
@@ -25,10 +26,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-class PartnerStore extends Model
+class PartnerStore extends Authenticatable
 {
     /** @use HasFactory<PartnerStoreFactory> */
-    use BelongsToTenant, HasFactory, HasUuids;
+    use BelongsToTenant, HasApiTokens, HasFactory, HasUuids;
 
     /**
      * The table associated with the model.
@@ -74,6 +75,11 @@ class PartnerStore extends Model
             'contact_info' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'portal_password';
     }
 
     /**

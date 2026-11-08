@@ -124,6 +124,10 @@ test('variant stock check constraint prevents negative stock', function () {
         'base_price' => 800.00,
     ]);
 
+    if (DB::getDriverName() !== 'pgsql') {
+        $this->markTestSkipped('CHECK constraint stock >= 0 is only enforced on PostgreSQL engine.');
+    }
+
     expect(function () use ($tenant, $product) {
         ProductVariant::create([
             'tenant_id' => $tenant->id,
